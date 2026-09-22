@@ -21,9 +21,11 @@ export default function BootSequence({ onDone }: { onDone: () => void }) {
   const [n, setN] = useState(0);
   const done = useRef(false);
 
-  const finish = () => {
+  const finish = (e?: Event) => {
     if (done.current) return;
     done.current = true;
+    // Otherwise the key that skipped the boot lands in the prompt below.
+    e?.preventDefault();
     onDone();
   };
 
@@ -48,7 +50,7 @@ export default function BootSequence({ onDone }: { onDone: () => void }) {
   }, []);
 
   return (
-    <div className="boot" onClick={finish}>
+    <div className="boot" onClick={() => finish()}>
       {STEPS.slice(0, n).map(([label, status], i) => (
         <div key={i} className="boot-row">
           <span>{label}</span>

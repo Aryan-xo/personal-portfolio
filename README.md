@@ -31,8 +31,19 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 
 ## Commands
 
-`help` lists the public ones. `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`,
-`date`, `echo`, `history` and `exit` are there too but unlisted.
+`help` lists the public ones: about, whoami, experience, research, projects,
+finance, skills, achievements, leadership, education, certifications, interests,
+contact, social, resume, neofetch, theme, banner, clear.
+
+Unlisted: `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`, `date`, `echo`,
+`history`, `exit`, plus aliases (`work`, `awards`, `quant`, `por`, `certs`,
+`hobbies`, `cv`).
+
+`resume` downloads the one-page SDE CV; `resume full` downloads the two-page
+academic one.
+
+Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
+an ambiguous prefix prints all matches.
 
 Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. The choice
 persists in `localStorage`.

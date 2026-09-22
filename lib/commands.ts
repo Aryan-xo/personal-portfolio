@@ -41,7 +41,10 @@ function wrap(text: string, indent = 2, hang = indent): Line[] {
     }
   }
   if (line.trim()) out.push(line);
-  return out.map((t) => P(t));
+  // A wrapped line should never open with the "·" that joined the previous item.
+  return out.map((t, i) =>
+    P(i === 0 ? t : t.replace(/^(\s*)·\s*/, (_, sp) => sp + "  "))
+  );
 }
 
 export const commandList = [
@@ -49,13 +52,18 @@ export const commandList = [
   ["about", "who I am"],
   ["whoami", "the short version"],
   ["experience", "where I've worked"],
+  ["research", "lab work in Japan"],
   ["projects", "things I've built"],
+  ["finance", "quant and valuation work"],
   ["skills", "what I work with"],
   ["achievements", "wins worth listing"],
+  ["leadership", "positions of responsibility"],
   ["education", "where I studied"],
+  ["certifications", "courses and credentials"],
+  ["interests", "what I do off the clock"],
   ["contact", "email, phone, address"],
   ["social", "github, linkedin, leetcode"],
-  ["resume", "download the PDF"],
+  ["resume", "download the PDF · `resume full` for the long one"],
   ["neofetch", "system info, portfolio edition"],
   ["theme", "switch colour scheme"],
   ["banner", "reprint the header"],
@@ -65,8 +73,27 @@ export const commandList = [
 export const commandNames = [
   ...commandList.map((c) => c[0]),
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
-  "sudo", "matrix", "vim", "exit", "history", "man",
+  "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
+  "por", "certs", "hobbies", "cv",
 ];
+
+/**
+ * Completion candidates for the current input. Completes a bare command, or the
+ * argument of a command that takes a fixed set (only `theme` so far).
+ */
+export function completions(raw: string): string[] {
+  const input = raw.replace(/^\s+/, "");
+  const m = input.match(/^(\S+)(\s+)(\S*)$/);
+  if (m) {
+    const [, cmd, , partial] = m;
+    if (cmd.toLowerCase() === "theme") {
+      return themes.map((t) => t.name).filter((n) => n.startsWith(partial.toLowerCase()));
+    }
+    return [];
+  }
+  if (!input || /\s/.test(input)) return [];
+  return commandNames.filter((c) => c.startsWith(input.toLowerCase()) && c !== input.toLowerCase());
+}
 
 export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
   const input = raw.trim();
@@ -88,7 +115,8 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
             cls: "cmdrow",
           })),
           P(),
-          D("  Tab completes · ↑ ↓ walks history · Ctrl+L clears"),
+          D("  Type to see a suggestion · Tab or → accepts it"),
+          D("  ↑ ↓ walks history · Ctrl+L clears"),
           D("  There are a few commands not on this list."),
         ],
       };
@@ -120,6 +148,7 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
           ...c.experience.flatMap((e) => [
             A(`${e.role} @ ${e.company}`),
             D(`${e.period} · ${e.location}`),
+            ...("note" in e && e.note ? wrap(e.note, 2).map((l) => D(l.text)) : []),
             ...e.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
             D(`  [ ${e.stack.join(" · ")} ]`),
             P(),
@@ -133,7 +162,7 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
           rule("projects"),
           ...c.projects.flatMap((p) => [
             A(`${p.name}`),
-            D(`  ${p.period}`),
+            D(`  ${p.period}  ·  ${p.tag}`),
             ...wrap(p.blurb, 2),
             D(`  ${p.stack.join(" · ")}${p.url ? `  →  ${p.url}` : ""}`),
             P(),
@@ -145,9 +174,14 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       return {
         lines: [
           rule("skills"),
-          ...Object.entries(c.skills).map(([k, v]) => ({
-            text: `  ${pad(k, 13)}${(v as readonly string[]).join("  ")}`,
-          })),
+          ...Object.entries(c.skills).flatMap(([k, v]) => {
+            const items = (v as readonly string[]).join(" · ");
+            const [first, ...rest] = wrap(items, 2 + 15, 2 + 15);
+            return [
+              { text: `  ${pad(k, 15)}${first.text.trimStart()}`, cls: undefined },
+              ...rest,
+            ];
+          }),
         ],
       };
 
@@ -168,9 +202,72 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
             A(e.school),
             P(`  ${e.degree}`),
             D(`  ${e.period} · ${e.detail}`),
+            ...e.extra.flatMap((x) => wrap(`· ${x}`, 2, 4)),
             P(),
           ]),
         ],
+      };
+
+    case "research":
+      return {
+        lines: [
+          rule("research"),
+          ...c.research.flatMap((r) => [
+            A(r.lab),
+            P(`  ${r.role} · ${r.advisor}`),
+            D(`  ${r.period}`),
+            ...wrap(r.note, 2).map((l) => D(l.text)),
+            P(),
+            D("  Approach"),
+            ...r.approach.flatMap((b) => wrap(`• ${b}`, 2, 4)),
+            P(),
+            D("  Result"),
+            ...r.result.flatMap((b) => wrap(`• ${b}`, 2, 4)),
+            P(),
+          ]),
+        ],
+      };
+
+    case "finance":
+    case "quant":
+      return {
+        lines: [
+          rule("finance & quant"),
+          ...c.finance.flatMap((f) => [
+            A(f.name),
+            D(`  ${f.period}  ·  ${f.tag}`),
+            ...f.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
+            P(),
+          ]),
+        ],
+      };
+
+    case "leadership":
+    case "por":
+      return {
+        lines: [
+          rule("positions of responsibility"),
+          ...c.leadership.flatMap((l) => [
+            A(l.role),
+            P(`  ${l.org}`),
+            D(`  ${l.period}`),
+            ...wrap(l.note, 2).map((x) => D(x.text)),
+            ...l.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
+            P(),
+          ]),
+        ],
+      };
+
+    case "certifications":
+    case "certs":
+      return {
+        lines: [rule("certifications"), ...c.certifications.flatMap((x) => wrap(`• ${x}`, 2, 4))],
+      };
+
+    case "interests":
+    case "hobbies":
+      return {
+        lines: [rule("interests"), ...c.interests.map((x) => P(`  • ${x}`))],
       };
 
     case "contact":
@@ -208,8 +305,17 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
     case "email":
       return { lines: [D(`composing to ${c.contact.email} …`)], open: `mailto:${c.contact.email}` };
     case "resume":
-    case "cv":
-      return { lines: [D(`downloading ${c.resumeUrl} …`)], open: c.resumeUrl };
+    case "cv": {
+      const full = /^(full|long|2|2page)$/i.test(arg);
+      const url = full ? c.resumeFullUrl : c.resumeUrl;
+      return {
+        lines: [
+          D(`downloading ${url} …`),
+          ...(full ? [] : [D("  `resume full` opens the longer academic CV instead.")]),
+        ],
+        open: url,
+      };
+    }
 
     case "neofetch": {
       const info: [string, string][] = [
@@ -258,7 +364,10 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       return {
         lines: [
           {
-            text: "  about/  experience/  projects/  skills/  achievements/  contact/  resume.pdf",
+            text:
+              "  about/  experience/  research/  projects/  finance/  skills/\n" +
+              "  achievements/  leadership/  education/  certifications/  interests/\n" +
+              "  contact/  resume.pdf",
             cls: "accent",
           },
         ],

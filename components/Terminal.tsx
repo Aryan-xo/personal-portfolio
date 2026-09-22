@@ -2,13 +2,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { config } from "@/lib/config";
 import { themes, defaultTheme } from "@/lib/themes";
-import { runCommand, commandNames, type Line } from "@/lib/commands";
+import { runCommand, completions, type Line } from "@/lib/commands";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 
 type Block = { prompt?: string; lines: Line[] };
 
-const QUICK = ["about", "experience", "projects", "skills", "achievements", "contact", "resume"];
+const QUICK = [
+  "about",
+  "experience",
+  "research",
+  "projects",
+  "finance",
+  "skills",
+  "achievements",
+  "leadership",
+  "education",
+  "certifications",
+  "interests",
+  "contact",
+  "resume",
+];
 
 export default function Terminal() {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -19,6 +33,14 @@ export default function Terminal() {
   const [matrix, setMatrix] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Inline suggestion: the remainder of the single best completion, shown as
+  // ghost text after the cursor. Tab or → accepts it.
+  const hits = completions(input);
+  const ghost =
+    hits.length && input && !input.endsWith(" ")
+      ? hits[0].slice(input.trimStart().split(/\s+/).pop()!.length)
+      : "";
   const endRef = useRef<HTMLDivElement>(null);
 
   // Apply theme as CSS variables.
@@ -94,10 +116,17 @@ export default function Terminal() {
       }
     } else if (e.key === "Tab") {
       e.preventDefault();
-      const hits = commandNames.filter((c) => c.startsWith(input.trim()) && input.trim());
-      if (hits.length === 1) setInput(hits[0] + " ");
-      else if (hits.length > 1)
+      if (ghost) {
+        setInput(input + ghost + (hits.length === 1 ? " " : ""));
+      } else if (hits.length > 1) {
         setBlocks((b) => [...b, { prompt: input, lines: [{ text: "  " + hits.join("  ") }] }]);
+      }
+    } else if (e.key === "ArrowRight" && ghost) {
+      const el = e.currentTarget;
+      if (el.selectionStart === input.length && el.selectionEnd === input.length) {
+        e.preventDefault();
+        setInput(input + ghost);
+      }
     } else if (e.key === "l" && e.ctrlKey) {
       e.preventDefault();
       setBlocks([]);
@@ -145,6 +174,7 @@ export default function Terminal() {
           <Prompt />
           <span className="typed">{input}</span>
           <span className="cursor" />
+          {ghost && <span className="ghost">{ghost}</span>}
           <input
             ref={inputRef}
             value={input}

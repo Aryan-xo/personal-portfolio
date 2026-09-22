@@ -145,6 +145,13 @@ body {
 
 .inputrow { position: relative; display: flex; align-items: center; min-height: 1.45em; }
 .typed { white-space: pre; }
+.ghost {
+  white-space: pre;
+  color: var(--dim);
+  opacity: .75;
+  pointer-events: none;
+  user-select: none;
+}
 .inputrow input {
   position: absolute;
   inset: 0;

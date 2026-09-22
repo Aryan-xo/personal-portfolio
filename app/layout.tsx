@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { config } from "@/lib/config";
 import "./globals.css";
 
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        <Analytics />
         {/* Structured data, so search engines read this as a person rather
             than as a wall of monospace. */}
         <script

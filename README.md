@@ -149,6 +149,13 @@ the way of reading; `crt on` brings them back. Both the theme and the CRT state
 persist in `localStorage`, and the overlays are also suppressed automatically
 for readers whose OS asks for reduced motion or increased contrast.
 
+## Analytics
+
+`@vercel/analytics` is mounted in the root layout. It reports nothing when run
+locally — the package detects development and logs to the console instead — and
+starts collecting once the site is deployed and Web Analytics is enabled for
+the project in the Vercel dashboard.
+
 ## Develop
 
 ```bash

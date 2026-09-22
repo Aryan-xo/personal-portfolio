@@ -110,9 +110,9 @@ html.light .crt::after { display: none; }
 /* Terminal on the left, search and contents on the right. */
 .shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  grid-template-columns: minmax(0, 1fr) 372px;
   gap: 2.2rem;
-  max-width: 1500px;
+  max-width: 1560px;
   margin: 0 auto;
   height: 100dvh;
 }
@@ -123,7 +123,7 @@ html.light .crt::after { display: none; }
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 3vh 0 0 4vw;
+  padding: 3vh 1.5rem 0 4vw;
   min-width: 0;
   cursor: text;
   overflow: hidden;
@@ -327,14 +327,14 @@ html.light .crt::after { display: none; }
 /* ── Sidebar ────────────────────────────────────────────── */
 .sidebar {
   height: 100dvh;
-  padding: 3vh 4vw 1.5rem 0;
+  /* A viewport-relative right padding was eating a third of the column. */
+  padding: 3vh 1.5rem 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
   min-width: 0;
   font-size: .86em;
   border-left: 1px solid color-mix(in srgb, var(--dim) 26%, transparent);
-  padding-left: 1.6rem;
 }
 
 .side-search {
@@ -478,7 +478,7 @@ html.light .crt::after { display: none; }
 
 /* Below this the sidebar would crowd the terminal, so it goes away and the
    `find` command covers the same ground. */
-@media (max-width: 1100px) {
+@media (max-width: 1240px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar { display: none; }
   .term { padding: 3vh 4vw 0; max-width: 1080px; margin: 0 auto; }
@@ -488,25 +488,64 @@ html.light .crt::after { display: none; }
 /* ── Sidebar charts ─────────────────────────────────────── */
 .side-note { margin: 0; font-size: .9em; }
 
+.side-card {
+  border: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
+  border-radius: 4px;
+  padding: .85rem .9rem 1rem;
+  margin-bottom: .9rem;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-bottom: .85rem;
+}
+.card-label {
+  font-size: .82em;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.card-user {
+  font-size: .82em;
+  color: var(--dim);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-user:hover { color: var(--accent); }
+.card-foot { margin: .7rem 0 0; font-size: .82em; }
+
+/* Donut and legend share the row; the legend takes whatever is left. */
 .chart-donut {
   display: flex;
   align-items: center;
-  gap: .9rem;
+  gap: 1rem;
   color: var(--fg);
 }
-.chart-donut svg { flex-shrink: 0; }
+.chart-ring { width: 82px; height: 82px; flex-shrink: 0; }
 
-.chart-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
 .chart-legend li {
   display: flex;
   align-items: center;
-  gap: .45rem;
-  font-size: .86em;
-  line-height: 1.7;
+  gap: .5rem;
+  font-size: .85em;
+  line-height: 1.75;
 }
 .chart-swatch {
-  width: .7em;
-  height: .7em;
+  width: .62em;
+  height: .62em;
   flex-shrink: 0;
   background: currentColor;
   border-radius: 1px;
@@ -518,61 +557,64 @@ html.light .crt::after { display: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.chart-pct {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
 
+/* Contribution calendar */
+.chart-cal { margin-top: 1rem; color: var(--fg); }
+.chart-cal svg { width: 100%; height: auto; display: block; }
+.cal-month {
+  fill: var(--dim);
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: -.02em;
+}
+.chart-cal rect { transition: fill-opacity 140ms ease; }
+.chart-cal rect:hover { fill-opacity: 1 !important; }
+
+.cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem .6rem;
+  margin-top: .7rem;
+  font-size: .82em;
+  flex-wrap: wrap;
+}
+.cal-foot strong { color: var(--accent); font-weight: 700; }
+/* Pushed right whether it shares the line with the count or wraps below it. */
+.cal-scale { display: flex; align-items: center; gap: .28rem; margin-left: auto; }
+.cal-scale i {
+  width: .62em;
+  height: .62em;
+  background: currentColor;
+  border-radius: 1.5px;
+}
+
+/* LeetCode bars */
 .chart-bars { list-style: none; margin: 0; padding: 0; color: var(--fg); }
 .chart-bars li {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  font-size: .86em;
-  line-height: 2;
+  gap: .6rem;
+  font-size: .85em;
+  line-height: 2.1;
 }
-.chart-bars .chart-name { flex: 0 0 4.5em; }
+.chart-bars .chart-name { flex: 0 0 4.2em; }
 .chart-track {
   flex: 1;
-  height: .55em;
-  background: color-mix(in srgb, var(--dim) 30%, transparent);
-  border-radius: 2px;
+  height: .5em;
+  background: color-mix(in srgb, var(--dim) 28%, transparent);
+  border-radius: 3px;
   overflow: hidden;
 }
 .chart-fill {
   display: block;
   height: 100%;
   background: currentColor;
-  border-radius: 2px;
+  border-radius: 3px;
 }
-
-.chart-spark {
-  width: 100%;
-  height: 34px;
-  color: var(--fg);
-  display: block;
-}
-
-
-/* ── Screensaver ────────────────────────────────────────── */
-.saver {
-  position: fixed;
-  inset: 0;
-  z-index: 45;
-  background: var(--bg);
-  cursor: pointer;
-  animation: saver-in 900ms ease both;
-}
-.saver canvas { display: block; }
-.saver-hint {
-  position: absolute;
-  bottom: 4vh;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: .82em;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  animation: pulse 2.4s ease-in-out infinite;
-}
-@keyframes saver-in { from { opacity: 0; } to { opacity: 1; } }
-
-.chart-grid { width: 100%; height: auto; color: var(--fg); display: block; }
-.chart-activity { margin-top: .7rem; }
-.chart-caption { margin: .4rem 0 0; font-size: .82em; }
+.chart-bars .chart-pct { min-width: 2.4em; text-align: right; }

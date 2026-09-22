@@ -58,8 +58,9 @@ Four visual layers, all built from the same data the text commands use:
 - The portrait carries a cursor torch — a second copy at full brightness,
   clipped to a disc that follows the pointer. It is done with a CSS mask rather
   than per-character state because the portrait is ~4,500 spans.
-- The sidebar renders a language donut, LeetCode difficulty bars and an
-  activity sparkline as inline SVG, in the theme's own colour.
+- The sidebar renders a card per account — a language donut and a full
+  contribution calendar with month labels — plus LeetCode difficulty bars, all
+  as inline SVG in the theme's own colour.
 - After two minutes untouched the portrait dissolves into a drifting-character
   screensaver that gathers and scatters on a slow cycle. Any input wakes it,
   and it never starts for readers who ask for reduced motion.
@@ -88,7 +89,7 @@ clicking a result runs the command that prints it in full. Idle, the sidebar
 shows a contents list, a few counts and the outbound links.
 
 The `find <term>` command runs the same search from the terminal, which is also
-the fallback below 1100px where the sidebar is hidden.
+the fallback below 1240px where the sidebar is hidden.
 
 ## Commands
 

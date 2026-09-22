@@ -1,34 +1,62 @@
 import { config } from "./config";
+import {
+  type Line,
+  renderAbout,
+  renderAchievement,
+  renderCertification,
+  renderEducation,
+  renderExperience,
+  renderFinance,
+  renderInterest,
+  renderLeadership,
+  renderProject,
+  renderResearch,
+  renderSkillGroup,
+} from "./render";
 
 export type Entry = {
-  /** Section heading, and the command that prints this entry in full. */
+  /** Section heading, and the command that prints the whole section. */
   section: string;
   command: string;
+  /** Stable handle for this one entry, e.g. "projects:3". */
+  id: string;
   title: string;
   meta?: string;
   body: string;
+  /** This entry alone, formatted exactly as its section formats it. */
+  lines: Line[];
 };
 
 /** A flat index over everything in config.ts, built once at module load. */
 export const index: Entry[] = (() => {
   const c = config;
   const out: Entry[] = [];
+  const seq = new Map<string, number>();
+  const id = (section: string) => {
+    const n = seq.get(section) ?? 0;
+    seq.set(section, n + 1);
+    return `${section}:${n}`;
+  };
 
   out.push({
     section: "about",
     command: "about",
+    id: id("about"),
     title: c.identity.name,
     meta: c.identity.headline,
     body: [c.identity.summary.join(" "), c.identity.tagline, c.identity.location].join(" "),
+    lines: renderAbout(),
   });
 
   for (const e of c.experience) {
     out.push({
       section: "experience",
       command: "experience",
+      id: id("experience"),
       title: `${e.role} @ ${e.company}`,
       meta: `${e.period} · ${e.location}`,
       body: [e.note, ...e.bullets, ...e.stack].join(" "),
+      lines: renderExperience(e),
     });
   }
 
@@ -36,9 +64,11 @@ export const index: Entry[] = (() => {
     out.push({
       section: "research",
       command: "research",
+      id: id("research"),
       title: r.lab,
       meta: `${r.role} · ${r.period}`,
       body: [r.note, r.advisor, ...r.approach, ...r.result].join(" "),
+      lines: renderResearch(r),
     });
   }
 
@@ -46,9 +76,11 @@ export const index: Entry[] = (() => {
     out.push({
       section: "projects",
       command: "projects",
+      id: id("projects"),
       title: p.name,
       meta: `${p.period} · ${p.tag}`,
       body: [p.blurb, ...p.stack].join(" "),
+      lines: renderProject(p),
     });
   }
 
@@ -56,9 +88,11 @@ export const index: Entry[] = (() => {
     out.push({
       section: "finance",
       command: "finance",
+      id: id("finance"),
       title: f.name,
       meta: `${f.period} · ${f.tag}`,
       body: f.bullets.join(" "),
+      lines: renderFinance(f),
     });
   }
 
@@ -66,46 +100,78 @@ export const index: Entry[] = (() => {
     out.push({
       section: "leadership",
       command: "leadership",
+      id: id("leadership"),
       title: l.role,
       meta: `${l.org} · ${l.period}`,
       body: [l.note, ...l.bullets].join(" "),
+      lines: renderLeadership(l),
     });
   }
 
   for (const a of c.achievements) {
-    out.push({ section: "achievements", command: "achievements", title: a.text, meta: a.year, body: a.text });
+    out.push({
+      section: "achievements",
+      command: "achievements",
+      id: id("achievements"),
+      title: a.text,
+      meta: a.year,
+      body: a.text,
+      lines: renderAchievement(a),
+    });
   }
 
   for (const e of c.education) {
     out.push({
       section: "education",
       command: "education",
+      id: id("education"),
       title: e.school,
       meta: `${e.degree} · ${e.period}`,
       body: [e.detail, ...e.extra].join(" "),
+      lines: renderEducation(e),
     });
   }
 
   for (const x of c.certifications) {
-    out.push({ section: "certifications", command: "certifications", title: x, body: x });
+    out.push({
+      section: "certifications",
+      command: "certifications",
+      id: id("certifications"),
+      title: x,
+      body: x,
+      lines: renderCertification(x),
+    });
   }
 
   for (const [group, items] of Object.entries(c.skills)) {
+    const list = items as readonly string[];
     out.push({
       section: "skills",
       command: "skills",
+      id: id("skills"),
       title: group,
-      meta: `${(items as readonly string[]).length} items`,
-      body: (items as readonly string[]).join(" "),
+      meta: `${list.length} items`,
+      body: list.join(" "),
+      lines: renderSkillGroup([group, list]),
     });
   }
 
   for (const x of c.interests) {
-    out.push({ section: "interests", command: "interests", title: x, body: x });
+    out.push({
+      section: "interests",
+      command: "interests",
+      id: id("interests"),
+      title: x,
+      body: x,
+      lines: renderInterest(x),
+    });
   }
 
   return out;
 })();
+
+/** Look up one entry by the id carried on a search hit. */
+export const byId = (id: string): Entry | undefined => index.find((e) => e.id === id);
 
 export type Hit = Entry & { score: number; snippet: string };
 

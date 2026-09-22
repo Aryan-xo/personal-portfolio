@@ -58,7 +58,7 @@ export default function Sidebar({
               setQ("");
               (document.querySelector(".inputrow input") as HTMLInputElement)?.focus();
             }
-            if (e.key === "Enter" && hits[0]) onRun(hits[0].command);
+            if (e.key === "Enter" && hits[0]) onRun(`show ${hits[0].id}`);
           }}
           placeholder="search everything"
           aria-label="search"
@@ -79,7 +79,8 @@ export default function Sidebar({
             {hits.length ? `${hits.length} match${hits.length === 1 ? "" : "es"}` : "no matches"}
           </p>
           {hits.map((h, i) => (
-            <button key={i} className="side-hit" onClick={() => onRun(h.command)}>
+            // Opens this entry alone; the section tag beside it opens the rest.
+            <button key={i} className="side-hit" onClick={() => onRun(`show ${h.id}`)}>
               <span className="side-tag">{h.section}</span>
               <span className="side-title">
                 <Marked text={h.title} query={q} />

@@ -1,12 +1,19 @@
 import { config } from "./config";
 import { themes } from "./themes";
 import { portraitSmall } from "./portrait";
-import { search } from "./search";
+import { search, byId } from "./search";
 import { timeline } from "./timeline";
 import type { Stats } from "@/app/api/stats/route";
 import { heatmap, bars } from "./heatmap";
+import {
+  A, D, P, pad, rule, wrap,
+  renderAbout, renderAchievement, renderCertification, renderEducation,
+  renderExperience, renderFinance, renderInterest, renderLeadership,
+  renderProject, renderResearch, renderSkillGroup,
+  type Line,
+} from "./render";
 
-export type Line = { text: string; cls?: string };
+export type { Line };
 export type CmdResult = {
   lines: Line[];
   clear?: boolean;
@@ -15,42 +22,6 @@ export type CmdResult = {
   open?: string;
   effect?: "matrix" | "shake";
 };
-
-const A = (text: string): Line => ({ text, cls: "accent" });
-const D = (text: string): Line => ({ text, cls: "dim" });
-const P = (text = ""): Line => ({ text });
-
-const pad = (s: string, n: number) => s + " ".repeat(Math.max(0, n - s.length));
-
-function rule(label = "") {
-  return D(label ? `── ${label} ${"─".repeat(Math.max(0, 56 - label.length))}` : "─".repeat(60));
-}
-
-const WRAP = 96;
-
-/** Greedy word wrap, with every line after the first indented to `hang`. */
-function wrap(text: string, indent = 2, hang = indent): Line[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  const out: string[] = [];
-  let line = " ".repeat(indent);
-  let width = indent;
-  for (const w of words) {
-    if (width > hang && width + 1 + w.length > WRAP) {
-      out.push(line);
-      line = " ".repeat(hang) + w;
-      width = hang + w.length;
-    } else {
-      const sep = width > (out.length ? hang : indent) ? " " : "";
-      line += sep + w;
-      width += sep.length + w.length;
-    }
-  }
-  if (line.trim()) out.push(line);
-  // A wrapped line should never open with the "·" that joined the previous item.
-  return out.map((t, i) =>
-    P(i === 0 ? t : t.replace(/^(\s*)·\s*/, (_, sp) => sp + "  "))
-  );
-}
 
 export const commandList = [
   ["help", "show this list"],
@@ -85,6 +56,7 @@ export const commandNames = [
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
   "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats", "heatmap",
+  "show",
 ];
 
 /**
@@ -159,12 +131,7 @@ export function runCommand(
 
     case "about":
       return {
-        lines: [
-        rule("about"),
-        ...c.identity.summary.flatMap((s) => (s ? wrap(s, 2) : [P()])),
-        P(),
-        D(`  ${c.identity.tagline}`),
-      ],
+        lines: [rule("about"), ...renderAbout()],
       };
 
     case "experience":
@@ -172,14 +139,7 @@ export function runCommand(
       return {
         lines: [
           rule("experience"),
-          ...c.experience.flatMap((e) => [
-            A(`${e.role} @ ${e.company}`),
-            D(`${e.period} · ${e.location}`),
-            ...("note" in e && e.note ? wrap(e.note, 2).map((l) => D(l.text)) : []),
-            ...e.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-            D(`  [ ${e.stack.join(" · ")} ]`),
-            P(),
-          ]),
+          ...c.experience.flatMap((e) => [...renderExperience(e), P()]),
         ],
       };
 
@@ -187,13 +147,7 @@ export function runCommand(
       return {
         lines: [
           rule("projects"),
-          ...c.projects.flatMap((p) => [
-            A(`${p.name}`),
-            D(`  ${p.period}  ·  ${p.tag}`),
-            ...wrap(p.blurb, 2),
-            D(`  ${p.stack.join(" · ")}${p.url ? `  →  ${p.url}` : ""}`),
-            P(),
-          ]),
+          ...c.projects.flatMap((p) => [...renderProject(p), P()]),
         ],
       };
 
@@ -203,14 +157,9 @@ export function runCommand(
           rule("skills"),
           P(`  ${pad("Top", 15)}${c.topSkills.join(" · ")}`),
           P(),
-          ...Object.entries(c.skills).flatMap(([k, v]) => {
-            const items = (v as readonly string[]).join(" · ");
-            const [first, ...rest] = wrap(items, 2 + 15, 2 + 15);
-            return [
-              { text: `  ${pad(k, 15)}${first.text.trimStart()}`, cls: undefined },
-              ...rest,
-            ];
-          }),
+          ...Object.entries(c.skills).flatMap(([k, v]) =>
+            renderSkillGroup([k, v as readonly string[]])
+          ),
         ],
       };
 
@@ -219,7 +168,7 @@ export function runCommand(
       return {
         lines: [
           rule("achievements"),
-          ...c.achievements.flatMap((a) => wrap(`${a.year}  ·  ${a.text}`, 2, 10)),
+          ...c.achievements.flatMap(renderAchievement),
         ],
       };
 
@@ -227,13 +176,7 @@ export function runCommand(
       return {
         lines: [
           rule("education"),
-          ...c.education.flatMap((e) => [
-            A(e.school),
-            P(`  ${e.degree}`),
-            D(`  ${e.period} · ${e.detail}`),
-            ...e.extra.flatMap((x) => wrap(`· ${x}`, 2, 4)),
-            P(),
-          ]),
+          ...c.education.flatMap((e) => [...renderEducation(e), P()]),
         ],
       };
 
@@ -325,19 +268,7 @@ export function runCommand(
       return {
         lines: [
           rule("research"),
-          ...c.research.flatMap((r) => [
-            A(r.lab),
-            P(`  ${r.role} · ${r.advisor}`),
-            D(`  ${r.period}`),
-            ...wrap(r.note, 2).map((l) => D(l.text)),
-            P(),
-            D("  Approach"),
-            ...r.approach.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-            P(),
-            D("  Result"),
-            ...r.result.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-            P(),
-          ]),
+          ...c.research.flatMap((r) => [...renderResearch(r), P()]),
         ],
       };
 
@@ -346,12 +277,7 @@ export function runCommand(
       return {
         lines: [
           rule("finance & quant"),
-          ...c.finance.flatMap((f) => [
-            A(f.name),
-            D(`  ${f.period}  ·  ${f.tag}`),
-            ...f.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-            P(),
-          ]),
+          ...c.finance.flatMap((f) => [...renderFinance(f), P()]),
         ],
       };
 
@@ -360,27 +286,20 @@ export function runCommand(
       return {
         lines: [
           rule("positions of responsibility"),
-          ...c.leadership.flatMap((l) => [
-            A(l.role),
-            P(`  ${l.org}`),
-            D(`  ${l.period}`),
-            ...(l.note ? wrap(l.note, 2).map((x) => D(x.text)) : []),
-            ...l.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-            P(),
-          ]),
+          ...c.leadership.flatMap((l) => [...renderLeadership(l), P()]),
         ],
       };
 
     case "certifications":
     case "certs":
       return {
-        lines: [rule("certifications"), ...c.certifications.flatMap((x) => wrap(`• ${x}`, 2, 4))],
+        lines: [rule("certifications"), ...c.certifications.flatMap(renderCertification)],
       };
 
     case "interests":
     case "hobbies":
       return {
-        lines: [rule("interests"), ...c.interests.map((x) => P(`  • ${x}`))],
+        lines: [rule("interests"), ...c.interests.flatMap(renderInterest)],
       };
 
     case "contact":
@@ -460,6 +379,21 @@ export function runCommand(
       return { lines: [D(`theme → ${t.name}`)], setTheme: t.name };
     }
 
+    case "show": {
+      const entry = byId(arg);
+      if (!entry) {
+        return { lines: [{ text: `show: no such entry: ${arg}`, cls: "err" }] };
+      }
+      return {
+        lines: [
+          rule(entry.section),
+          ...entry.lines,
+          P(),
+          D(`  Run \`${entry.command}\` for everything in this section.`),
+        ],
+      };
+    }
+
     case "find":
     case "grep":
     case "search": {
@@ -483,9 +417,10 @@ export function runCommand(
             A(`  ${h.title}`),
             D(`    ${h.section}${h.meta ? ` · ${h.meta}` : ""}`),
             ...wrap(h.snippet, 4).map((l) => D(l.text)),
+            D(`    show ${h.id}`),
             P(),
           ]),
-          D(`  Run a section name to see any of these in full.`),
+          D("  `show <id>` opens one of these on its own."),
         ],
       };
     }

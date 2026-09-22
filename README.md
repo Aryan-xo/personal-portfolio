@@ -88,7 +88,13 @@ query term has to match somewhere for an entry to count.
 
 The sidebar searches as you type and highlights the matches; `/` on an empty
 prompt or ⌘K anywhere jumps to the box, Escape returns to the terminal, and
-clicking a result runs the command that prints it in full. Idle, the sidebar
+clicking a result opens *that entry alone* via `show <id>`, with a line
+offering the rest of its section.
+
+Every entry is formatted by one renderer in `lib/render.ts`, which both the
+section commands and `show` call. A result opened from search therefore reads
+exactly as it does in its section, and there is no second copy of the
+formatting to drift out of step. Idle, the sidebar
 shows a contents list, a few counts and the outbound links.
 
 The `find <term>` command runs the same search from the terminal, which is also

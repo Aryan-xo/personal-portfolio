@@ -369,7 +369,7 @@ export const config = {
       school: "Indian Institute of Technology, Bombay",
       degree: "B.Tech · Metallurgical Engineering and Materials Science",
       period: "Oct 2022 — May 2026",
-      detail: "CPI 8.29/10 · Mumbai, India",
+      detail: "CPI 8.23/10 · Mumbai, India",
       extra: [
         "Minor, Centre for Machine Learning and Data Science (C-MInDS) — Minor CPI 9.0",
         "CFA Level 1 Candidate (Aug 2025), USA",

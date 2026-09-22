@@ -36,9 +36,20 @@ export type Account = {
   contrib: Contrib | null;
 };
 
+export type LeetCode = {
+  user: string;
+  total: number;
+  byLevel: [string, number][];
+  ranking: number | null;
+  /** Rolling 365 days, in the same shape as a GitHub calendar. */
+  contrib: Contrib | null;
+  streak: number | null;
+  activeDays: number | null;
+};
+
 export type Stats = {
   accounts: Account[];
-  leetcode: { user: string; total: number; byLevel: [string, number][]; ranking: number | null } | null;
+  leetcode: LeetCode | null;
 };
 
 type Cfg = { user: string; label: string; token?: string };
@@ -253,32 +264,92 @@ async function account({ user, label, token }: Cfg): Promise<Account> {
   return base;
 }
 
-async function leetcode(): Promise<Stats["leetcode"]> {
+/**
+ * LeetCode returns a calendar per calendar year. A rolling 365 days matches
+ * how GitHub presents the same thing, and stops January looking like a reset,
+ * so the current and previous year are merged and the tail taken.
+ */
+async function leetcode(): Promise<LeetCode | null> {
   const user = handle(config.contact.leetcode);
-  const query = `query($u: String!) {
+  const ask = (query: string, variables: Record<string, unknown>) =>
+    fetch("https://leetcode.com/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
+      body: JSON.stringify({ query, variables }),
+      next: { revalidate },
+    });
+
+  const statsQuery = `query($u: String!) {
     matchedUser(username: $u) {
       profile { ranking }
       submitStatsGlobal { acSubmissionNum { difficulty count } }
     }
   }`;
-  const res = await fetch("https://leetcode.com/graphql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
-    body: JSON.stringify({ query, variables: { u: user } }),
-    next: { revalidate },
-  });
-  if (!res.ok) return null;
+  const calQuery = `query($u: String!, $y: Int) {
+    matchedUser(username: $u) {
+      userCalendar(year: $y) { streak totalActiveDays submissionCalendar }
+    }
+  }`;
 
-  const json = await res.json();
-  const m = json?.data?.matchedUser;
+  const year = new Date().getUTCFullYear();
+  const [sRes, thisYear, lastYear] = await Promise.all([
+    ask(statsQuery, { u: user }),
+    ask(calQuery, { u: user, y: year }),
+    ask(calQuery, { u: user, y: year - 1 }),
+  ]);
+  if (!sRes.ok) return null;
+
+  const m = (await sRes.json())?.data?.matchedUser;
   if (!m) return null;
 
   const nums: { difficulty: string; count: number }[] = m.submitStatsGlobal?.acSubmissionNum ?? [];
+
+  // submissionCalendar arrives as a JSON string of unix-second → count.
+  const byDay = new Map<string, number>();
+  let streak: number | null = null;
+  let activeDays: number | null = null;
+
+  for (const [i, res] of [thisYear, lastYear].entries()) {
+    if (!res.ok) continue;
+    const cal = (await res.json())?.data?.matchedUser?.userCalendar;
+    if (!cal) continue;
+    if (i === 0) {
+      streak = cal.streak ?? null;
+      activeDays = cal.totalActiveDays ?? null;
+    }
+    try {
+      for (const [ts, n] of Object.entries(JSON.parse(cal.submissionCalendar ?? "{}"))) {
+        const day = new Date(Number(ts) * 1000).toISOString().slice(0, 10);
+        byDay.set(day, (byDay.get(day) ?? 0) + Number(n));
+      }
+    } catch {}
+  }
+
+  let contrib: Contrib | null = null;
+  if (byDay.size) {
+    const days: [string, number][] = [];
+    const end = new Date();
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 364);
+    for (const d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      days.push([key, byDay.get(key) ?? 0]);
+    }
+    contrib = {
+      days,
+      total: days.reduce((a, [, n]) => a + n, 0),
+      source: "graphql",
+    };
+  }
+
   return {
     user,
     total: nums.find((n) => n.difficulty === "All")?.count ?? 0,
     byLevel: nums.filter((n) => n.difficulty !== "All").map((n) => [n.difficulty, n.count]),
     ranking: m.profile?.ranking ?? null,
+    contrib,
+    streak,
+    activeDays,
   };
 }
 

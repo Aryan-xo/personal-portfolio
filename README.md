@@ -53,7 +53,10 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 
 ## Live data
 
-`app/api/stats/route.ts` reports both GitHub accounts and LeetCode. The `gh`
+`app/api/stats/route.ts` reports both GitHub accounts and LeetCode, each with a
+contribution calendar. LeetCode returns a calendar per calendar year, so the
+current and previous year are merged and the trailing 365 days taken — the same
+rolling window GitHub shows, which stops January looking like a reset. The `gh`
 command renders the figures, `contrib` draws the calendars, and the sidebar
 shows a language donut and contribution grid per account. The response is
 cached for an hour and each source is fetched independently, so one being down

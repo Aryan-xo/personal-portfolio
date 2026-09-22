@@ -50,7 +50,17 @@ function Donut({ data }: { data: [string, number][] }) {
 }
 
 /** A full-width contribution calendar: weeks across, weekdays down. */
-function Calendar({ days, total, year }: { days: [string, number][]; total: number; year: boolean }) {
+function Calendar({
+  days,
+  total,
+  year,
+  unit = "contribution",
+}: {
+  days: [string, number][];
+  total: number;
+  year: boolean;
+  unit?: string;
+}) {
   const lead = new Date(days[0][0] + "T00:00:00Z").getUTCDay();
   const cells: ([string, number] | null)[] = [...Array(lead).fill(null), ...days];
   const weeks: ([string, number] | null)[][] = [];
@@ -81,7 +91,7 @@ function Calendar({ days, total, year }: { days: [string, number][]; total: numb
 
   return (
     <div className="chart-cal">
-      <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${total} contributions`}>
+      <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${total} ${unit}s`}>
         {labels.map((l) => (
           <text key={l.text + l.x} x={l.x} y={9} className="cal-month">
             {l.text}
@@ -100,7 +110,7 @@ function Calendar({ days, total, year }: { days: [string, number][]; total: numb
                 fill="currentColor"
                 fillOpacity={d[1] === 0 ? 0.1 : 0.3 + (d[1] / max) * 0.7}
               >
-                <title>{`${d[0]} · ${d[1]} contribution${d[1] === 1 ? "" : "s"}`}</title>
+                <title>{`${d[0]} · ${d[1]} ${unit}${d[1] === 1 ? "" : "s"}`}</title>
               </rect>
             )
           )
@@ -109,7 +119,7 @@ function Calendar({ days, total, year }: { days: [string, number][]; total: numb
 
       <div className="cal-foot">
         <span>
-          <strong>{total}</strong> contribution{total === 1 ? "" : "s"}
+          <strong>{total}</strong> {unit}{total === 1 ? "" : "s"}
           <span className="dim"> · {year ? "past year" : "past 90 days"}</span>
         </span>
         <span className="cal-scale">
@@ -202,8 +212,22 @@ export default function SideCharts({ stats }: { stats: Stats | null | undefined 
               </a>
             </header>
             <Bars data={levels} />
+
+            {stats.leetcode!.contrib && stats.leetcode!.contrib.total > 0 && (
+              <Calendar
+                days={stats.leetcode!.contrib.days as [string, number][]}
+                total={stats.leetcode!.contrib.total}
+                year
+                unit="submission"
+              />
+            )}
+
             {stats.leetcode!.ranking && (
-              <p className="card-foot dim">global rank {stats.leetcode!.ranking.toLocaleString()}</p>
+              <p className="card-foot dim">
+                global rank {stats.leetcode!.ranking.toLocaleString()}
+                {/* A one-day streak is just "solved something today". */}
+                {(stats.leetcode!.streak ?? 0) > 1 ? ` · ${stats.leetcode!.streak}-day streak` : ""}
+              </p>
             )}
           </section>
         </>

@@ -185,7 +185,8 @@ export function runCommand(
       const st = ctx.stats;
       if (st === undefined) return { lines: [D("fetching activity …")] };
       const withData = st?.accounts.filter((a) => a.contrib?.total) ?? [];
-      if (!withData.length) {
+      const lc = st?.leetcode?.contrib?.total ? st.leetcode : null;
+      if (!withData.length && !lc) {
         return { lines: [{ text: "contrib: no activity data available", cls: "err" }] };
       }
       return {
@@ -196,6 +197,14 @@ export function runCommand(
             ...heatmap(a.contrib!),
             P(),
           ]),
+          ...(lc
+            ? [
+                A(`  ${lc.user}  ·  leetcode`),
+                ...heatmap(lc.contrib!, "submission"),
+                ...((lc.streak ?? 0) > 1 ? [D(`  ${lc.streak}-day streak`)] : []),
+                P(),
+              ]
+            : []),
         ],
       };
     }
@@ -252,7 +261,10 @@ export function runCommand(
           A(`  leetcode.com/u/${l.user}`),
           P(`    ${pad(String(l.total), 6)}problems solved`),
           ...bars(l.byLevel as [string, number][], 22, 20).map((x) => P(`  ${x.text}`)),
-          ...(l.ranking ? [D(`    global rank  ${l.ranking.toLocaleString()}`)] : [])
+          ...(l.ranking ? [D(`    global rank  ${l.ranking.toLocaleString()}`)] : []),
+          ...(l.contrib?.total
+            ? [D(`    ${l.contrib.total} submissions in the last year`)]
+            : [])
         );
       }
 

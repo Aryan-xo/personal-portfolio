@@ -6,7 +6,7 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /** Draws a GitHub-style contribution grid: weeks across, weekdays down. */
-export function heatmap(c: Contrib): Line[] {
+export function heatmap(c: Contrib, unit = "contribution"): Line[] {
   if (!c.days.length) return [{ text: "  no activity data", cls: "dim" }];
 
   // Pad the front so the first column starts on a Sunday.
@@ -48,7 +48,7 @@ export function heatmap(c: Contrib): Line[] {
   const window = c.source === "graphql" ? "in the last year" : "in the last 90 days";
   out.push(
     { text: "" },
-    { text: `  ${c.total} contribution${c.total === 1 ? "" : "s"} ${window}`, cls: "accent" },
+    { text: `  ${c.total} ${unit}${c.total === 1 ? "" : "s"} ${window}`, cls: "accent" },
     { text: `  less ${LEVELS.join("")} more`, cls: "dim" }
   );
   if (c.source === "events") {

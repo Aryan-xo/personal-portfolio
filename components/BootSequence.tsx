@@ -30,16 +30,37 @@ export default function BootSequence({ onDone }: { onDone: () => void }) {
     onDone();
   };
 
-  // Only heard by someone who turned sound on previously; a first visit has
-  // not had the gesture a browser requires before it will play anything.
+  /*
+   * Sound is on unless it has been turned off, but a browser will not play
+   * anything before a gesture — so the handshake is attempted immediately for
+   * anyone returning, and otherwise waits for the first key or click, which on
+   * this screen is also what skips the boot.
+   */
   useEffect(() => {
+    let off = false;
     try {
-      if (localStorage.getItem("sound") === "on") {
-        audio.setSound(true);
-        audio.powerOn();
-        audio.handshake();
-      }
+      off = localStorage.getItem("sound") === "off";
     } catch {}
+    audio.setSound(!off);
+    if (off) return;
+
+    const play = () => {
+      audio.powerOn();
+      audio.handshake();
+    };
+    play();
+
+    const onGesture = () => {
+      play();
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+    };
+    window.addEventListener("pointerdown", onGesture, { once: true });
+    window.addEventListener("keydown", onGesture, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+    };
   }, []);
 
   useEffect(() => {

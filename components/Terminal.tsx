@@ -50,7 +50,7 @@ export default function Terminal() {
   const [stats, setStats] = useState<Stats | null | undefined>(undefined);
   const [crt, setCrt] = useState(true);
   const [cols, setCols] = useState(96);
-  const [sound, setSound] = useState(false);
+  const [sound, setSound] = useState(true);
   const touring = useRef(false);
   const settled = useRef(0);
   const [matrix, setMatrix] = useState(false);
@@ -104,7 +104,7 @@ export default function Terminal() {
       const saved = localStorage.getItem("theme");
       if (saved && themes.some((t) => t.name === saved)) setTheme(saved);
       setCrt(localStorage.getItem("crt") !== "off");
-      const s = localStorage.getItem("sound") === "on";
+      const s = localStorage.getItem("sound") !== "off";
       setSound(s);
       audio.setSound(s);
     } catch {}

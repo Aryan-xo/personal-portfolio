@@ -10,7 +10,9 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let enabled = false;
+// On unless the reader has turned it off; a browser will not actually make a
+// sound until the first gesture regardless.
+let enabled = true;
 
 /** Shared noise buffer — regenerating white noise per keystroke is wasteful. */
 let noise: AudioBuffer | null = null;

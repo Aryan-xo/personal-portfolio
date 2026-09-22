@@ -118,16 +118,17 @@ that describes most people a portfolio is sent to.
 
 ## Sound
 
-Off by default, and synthesised rather than loaded — a portfolio should not
+On unless turned off, and synthesised rather than loaded — a portfolio should not
 ship half a megabyte of samples to make a clicking noise. `lib/audio.ts` has
 key clicks, a CRT power-on (the thunk of the degauss coil, then the flyback
 whine at 15.7kHz, which is the frequency an actual television line output ran
 at), and a dial-up handshake over the boot sequence.
 
 Browsers will not start audio before a gesture, so the context is created
-lazily on the first call that follows one and anything earlier is dropped. The
-handshake is therefore only heard by someone who enabled sound on a previous
-visit.
+lazily on the first call that follows one and anything earlier is dropped
+rather than throwing. The boot screen therefore attempts the handshake
+immediately — which works for anyone returning — and otherwise waits for the
+first key or click, which on that screen is also what skips the boot.
 
 ## Search
 

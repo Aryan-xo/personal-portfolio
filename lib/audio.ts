@@ -71,6 +71,13 @@ export function setSound(on: boolean) {
 
 export const soundOn = () => enabled;
 
+/**
+ * A little ahead of the clock. A freshly created context reports
+ * `currentTime` of exactly 0, and a short envelope scheduled from there lands
+ * its later points before zero, which AudioParam rejects outright.
+ */
+const now = () => (ctx ? ctx.currentTime + 0.01 : 0);
+
 /** A short band-passed noise burst: the body of a key press. */
 function burst(
   at: number,
@@ -81,6 +88,9 @@ function burst(
   out: AudioNode | null = null
 ) {
   if (!ctx || !noise || !master) return;
+  const t0 = Math.max(at, ctx.currentTime);
+  const d = Math.max(dur, 0.005);
+
   const src = ctx.createBufferSource();
   src.buffer = noise;
   src.playbackRate.value = 0.8 + Math.random() * 0.4;
@@ -91,13 +101,13 @@ function burst(
   bp.Q.value = q;
 
   const g = ctx.createGain();
-  g.gain.setValueAtTime(0, at);
-  g.gain.linearRampToValueAtTime(gain, at + 0.001);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + Math.min(0.001, d * 0.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
 
   src.connect(bp).connect(g).connect(out ?? master);
-  src.start(at);
-  src.stop(at + dur + 0.02);
+  src.start(t0);
+  src.stop(t0 + d + 0.02);
 }
 
 function tone(
@@ -109,25 +119,31 @@ function tone(
   out: AudioNode | null = null
 ) {
   if (!ctx || !master) return;
+  const t0 = Math.max(at, ctx.currentTime);
+  const d = Math.max(dur, 0.03);
+  const attack = t0 + Math.min(0.008, d * 0.25);
+  const hold = Math.max(attack + 0.001, t0 + d - 0.02);
+  const end = hold + Math.max(0.01, t0 + d - hold);
+
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.value = freq;
 
   const g = ctx.createGain();
-  g.gain.setValueAtTime(0, at);
-  g.gain.linearRampToValueAtTime(gain, at + 0.008);
-  g.gain.setValueAtTime(gain, at + dur - 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(gain, attack);
+  g.gain.setValueAtTime(gain, hold);
+  g.gain.exponentialRampToValueAtTime(0.0001, end);
 
   osc.connect(g).connect(out ?? master);
-  osc.start(at);
-  osc.stop(at + dur + 0.02);
+  osc.start(t0);
+  osc.stop(end + 0.02);
 }
 
 /** A key going down. Slightly different every time, or it reads as a machine gun. */
 export function key(soft = false) {
   if (!enabled || !ensure() || !ctx) return;
-  const t = ctx.currentTime;
+  const t = now();
   burst(t, soft ? 0.012 : 0.02, soft ? 2600 : 1900, 1.2, soft ? 0.05 : 0.11);
   tone(t, 0.016, 120 + Math.random() * 40, soft ? 0.015 : 0.035, "triangle");
 }
@@ -135,7 +151,7 @@ export function key(soft = false) {
 /** Return: deeper, with the clack of a longer key. */
 export function enterKey() {
   if (!enabled || !ensure() || !ctx) return;
-  const t = ctx.currentTime;
+  const t = now();
   burst(t, 0.03, 1400, 1, 0.14);
   tone(t, 0.03, 90, 0.05, "triangle");
 }
@@ -143,6 +159,7 @@ export function enterKey() {
 /** Pans a source across the stereo field over its lifetime. */
 function panned(at: number, dur: number, from: number, to: number): StereoPannerNode | null {
   if (!ctx || !wet) return null;
+  at = Math.max(at, ctx.currentTime);
   const pan = ctx.createStereoPanner();
   pan.pan.setValueAtTime(from, at);
   pan.pan.linearRampToValueAtTime(to, at + dur);
@@ -157,6 +174,7 @@ function panned(at: number, dur: number, from: number, to: number): StereoPanner
  */
 function swell(at: number, dur: number, gain: number, out: AudioNode | null) {
   if (!ctx || !noise || !master) return;
+  at = Math.max(at, ctx.currentTime);
   const src = ctx.createBufferSource();
   src.buffer = noise;
   src.loop = true;
@@ -185,6 +203,7 @@ function swell(at: number, dur: number, gain: number, out: AudioNode | null) {
  */
 function drone(at: number, dur: number, freq: number, gain: number, out: AudioNode | null) {
   if (!ctx || !master) return;
+  at = Math.max(at, ctx.currentTime);
   for (const cents of [-7, 0, 9]) {
     const osc = ctx.createOscillator();
     osc.type = "sine";
@@ -219,7 +238,7 @@ function drone(at: number, dur: number, freq: number, gain: number, out: AudioNo
  */
 export function powerOn() {
   if (!enabled || !ensure() || !ctx || !wet) return;
-  const t = ctx.currentTime;
+  const t = now();
 
   swell(t, 1.5, 0.08, wet);
 
@@ -253,7 +272,7 @@ export function powerOn() {
  */
 export function handshake() {
   if (!enabled || !ensure() || !ctx || !wet) return;
-  const t = ctx.currentTime + 2.2;
+  const t = now() + 2.2;
 
   const dial = [697, 1209, 697, 1336, 852, 1477, 770, 1209];
   dial.forEach((f, i) => {
@@ -283,7 +302,7 @@ export function handshake() {
 /** A small negative blip, for a command that was not found. */
 export function error() {
   if (!enabled || !ensure() || !ctx) return;
-  const t = ctx.currentTime;
+  const t = now();
   tone(t, 0.08, 220, 0.06, "square");
   tone(t + 0.08, 0.12, 165, 0.06, "square");
 }

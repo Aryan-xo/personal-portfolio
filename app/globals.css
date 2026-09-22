@@ -1,12 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #020a02;
-  --fg: #33ff66;
-  --accent: #8affb0;
-  --dim: #1f7a3d;
-  --glow: 51, 255, 102;
+  --bg: #04120a;
+  --fg: #7cf9a6;
+  --accent: #c6ffd9;
+  --dim: #5aa876;
+  --glow: 124, 249, 166;
   --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Glow is decoration; at body size it just blurs the glyphs. Headings get the
+     full bloom, running text gets a hairline of it. */
+  --glow-text: 0 0 1px rgba(var(--glow), 0.28);
+  --glow-strong: 0 0 6px rgba(var(--glow), 0.55), 0 0 20px rgba(var(--glow), 0.28);
+  --scanline: 0.10;
 }
 
 * { box-sizing: border-box; }
@@ -17,19 +23,20 @@ html, body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15.5px;
+  line-height: 1.62;
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  text-shadow: 0 0 5px rgba(var(--glow), 0.45), 0 0 14px rgba(var(--glow), 0.18);
+  text-shadow: var(--glow-text);
   transition: background 220ms ease, color 220ms ease;
 }
 
 .accent { color: var(--accent); }
 .dim    { color: var(--dim); }
-.err    { color: #ff5f5f; text-shadow: 0 0 6px rgba(255, 95, 95, 0.5); }
+.err    { color: #ff8080; }
 .cmdrow { color: var(--fg); }
 .cmdrow:hover { color: var(--accent); }
 
@@ -44,8 +51,8 @@ body {
     to bottom,
     rgba(0, 0, 0, 0) 0px,
     rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.28) 3px,
-    rgba(0, 0, 0, 0.28) 4px
+    rgba(0, 0, 0, var(--scanline)) 3px,
+    rgba(0, 0, 0, var(--scanline)) 3px
   );
 }
 
@@ -55,18 +62,25 @@ body {
   inset: 0;
   z-index: 41;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, transparent 52%, rgba(0, 0, 0, 0.55) 100%),
-    linear-gradient(rgba(var(--glow), 0.035), rgba(var(--glow), 0.035));
-  animation: flicker 5.5s infinite steps(1);
+  background: radial-gradient(ellipse at center, transparent 68%, rgba(0, 0, 0, 0.34) 100%);
+  animation: flicker 7s infinite steps(1);
 }
 
 @keyframes flicker {
-  0%, 94%, 100% { opacity: 1; }
-  95%           { opacity: 0.86; }
-  96%           { opacity: 1; }
-  97%           { opacity: 0.92; }
+  0%, 96%, 100% { opacity: 1; }
+  97%           { opacity: 0.94; }
+  98%           { opacity: 1; }
 }
+
+/* `crt off` — kill the overlays and the bloom, keep the colours. */
+html.plain .crt::before,
+html.plain .crt::after { display: none; }
+html.plain { --glow-text: none; --glow-strong: none; }
+
+/* On a light background the bloom muddies the glyphs and the vignette reads as
+   a dirty edge, so a light theme gets neither. */
+html.light { --glow-text: none; --glow-strong: none; }
+html.light .crt::after { display: none; }
 
 .shake { animation: shake 90ms 5; }
 @keyframes shake {
@@ -98,7 +112,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 3vh 4vw 0;
-  max-width: 1180px;
+  max-width: 1080px;
   margin: 0 auto;
   cursor: text;
 }
@@ -125,20 +139,25 @@ body {
 .portrait-row { display: block; }
 
 .headline h1 {
-  margin: 0 0 .3rem;
-  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  margin: 0 0 .5rem;
+  font-size: clamp(1.5rem, 4vw, 2.6rem);
   letter-spacing: .06em;
   font-weight: 700;
+  line-height: 1.15;
 }
-.glowtext {
-  text-shadow: 0 0 8px rgba(var(--glow), .7), 0 0 26px rgba(var(--glow), .35);
-}
-.headline p { margin: .15rem 0; }
-.hint { margin-top: .9rem !important; color: var(--dim); }
+.glowtext { text-shadow: var(--glow-strong); }
+.headline p { margin: .2rem 0; }
+.hint { margin-top: 1.1rem !important; color: var(--dim); }
 
 .scroll { flex: 1; padding-bottom: 1.5rem; }
-.block { margin-bottom: .85rem; white-space: pre-wrap; word-break: break-word; }
-.echo { margin-bottom: .25rem; }
+/* Output is already wrapped to a fixed column count in lib/commands.ts, so the
+   CSS must not impose a second, narrower wrap on top of it. */
+.block {
+  margin-bottom: 2rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.echo { margin-bottom: .5rem; }
 
 .ps1 { white-space: nowrap; }
 .path { color: var(--fg); opacity: .85; }
@@ -208,7 +227,7 @@ body {
 }
 
 @media (max-width: 820px) {
-  html, body { font-size: 12.5px; }
+  html, body { font-size: 14px; }
   .header { flex-wrap: wrap; gap: 1.1rem; justify-content: center; text-align: center; }
   .headline { width: 100%; }
   .portrait { font-size: clamp(2.6px, 1.05vw, 5px); }
@@ -216,4 +235,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .crt::after, .cursor, .shake { animation: none !important; }
+}
+
+/* Honour a reader who has asked the OS for more contrast. */
+@media (prefers-contrast: more) {
+  :root { --scanline: 0; --glow-text: none; }
+  .crt::after { display: none; }
 }

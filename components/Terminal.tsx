@@ -30,6 +30,7 @@ export default function Terminal() {
   const [history, setHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
   const [theme, setTheme] = useState(defaultTheme.name);
+  const [crt, setCrt] = useState(true);
   const [matrix, setMatrix] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +53,8 @@ export default function Terminal() {
     r.setProperty("--accent", t.accent);
     r.setProperty("--dim", t.dim);
     r.setProperty("--glow", t.glow);
+    r.setProperty("--scanline", t.light ? "0" : "0.10");
+    document.documentElement.classList.toggle("light", !!t.light);
     try {
       localStorage.setItem("theme", t.name);
     } catch {}
@@ -61,8 +64,17 @@ export default function Terminal() {
     try {
       const saved = localStorage.getItem("theme");
       if (saved && themes.some((t) => t.name === saved)) setTheme(saved);
+      setCrt(localStorage.getItem("crt") !== "off");
     } catch {}
   }, []);
+
+  // `plain` lives on <html> so it also covers the ::before/::after overlays.
+  useEffect(() => {
+    document.documentElement.classList.toggle("plain", !crt);
+    try {
+      localStorage.setItem("crt", crt ? "on" : "off");
+    } catch {}
+  }, [crt]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -84,6 +96,7 @@ export default function Terminal() {
       setBlocks((b) => [...b, { prompt: line, lines: res.lines }]);
 
       if (res.setTheme) setTheme(res.setTheme);
+      if (res.setCrt !== undefined) setCrt(res.setCrt);
       if (res.open) window.open(res.open, "_blank", "noopener,noreferrer");
       if (res.effect === "matrix") setMatrix(true);
       if (res.effect === "shake") {
@@ -148,6 +161,7 @@ export default function Terminal() {
           <p className="dim">{config.identity.tagline}</p>
           <p className="hint">
             Type <span className="accent">help</span> and press Enter.
+            {" "}Hard to read? <span className="accent">crt off</span>.
           </p>
         </div>
       </header>

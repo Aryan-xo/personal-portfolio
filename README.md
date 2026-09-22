@@ -45,8 +45,13 @@ academic one.
 Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
 an ambiguous prefix prints all matches.
 
-Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. The choice
-persists in `localStorage`.
+Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. `paper` is
+a light theme and skips the CRT overlays.
+
+`crt off` turns off the scanlines, vignette and phosphor glow when they get in
+the way of reading; `crt on` brings them back. Both the theme and the CRT state
+persist in `localStorage`, and the overlays are also suppressed automatically
+for readers whose OS asks for reduced motion or increased contrast.
 
 ## Develop
 

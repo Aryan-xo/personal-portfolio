@@ -7,6 +7,7 @@ export type CmdResult = {
   lines: Line[];
   clear?: boolean;
   setTheme?: string;
+  setCrt?: boolean;
   open?: string;
   effect?: "matrix" | "shake";
 };
@@ -66,6 +67,7 @@ export const commandList = [
   ["resume", "download the PDF · `resume full` for the long one"],
   ["neofetch", "system info, portfolio edition"],
   ["theme", "switch colour scheme"],
+  ["crt", "toggle scanlines and glow"],
   ["banner", "reprint the header"],
   ["clear", "wipe the screen"],
 ] as const;
@@ -88,6 +90,12 @@ export function completions(raw: string): string[] {
     const [, cmd, , partial] = m;
     if (cmd.toLowerCase() === "theme") {
       return themes.map((t) => t.name).filter((n) => n.startsWith(partial.toLowerCase()));
+    }
+    if (cmd.toLowerCase() === "crt") {
+      return ["on", "off"].filter((n) => n.startsWith(partial.toLowerCase()));
+    }
+    if (/^(resume|cv)$/i.test(cmd)) {
+      return ["full"].filter((n) => n.startsWith(partial.toLowerCase()));
     }
     return [];
   }
@@ -356,6 +364,21 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       const t = themes.find((x) => x.name === arg.toLowerCase());
       if (!t) return { lines: [{ text: `theme: no such theme: ${arg}`, cls: "err" }] };
       return { lines: [D(`theme → ${t.name}`)], setTheme: t.name };
+    }
+
+    case "crt": {
+      const on = /^on$/i.test(arg);
+      const off = /^off$/i.test(arg);
+      if (!on && !off) {
+        return {
+          lines: [
+            D("usage: crt on | crt off"),
+            P("  Turns the scanlines, vignette and phosphor glow on or off."),
+            D("  `crt off` is the one to reach for if the screen is hard to read."),
+          ],
+        };
+      }
+      return { lines: [D(`crt → ${on ? "on" : "off"}`)], setCrt: on };
     }
 
     case "banner":

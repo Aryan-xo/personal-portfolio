@@ -2,17 +2,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { config } from "@/lib/config";
 import { themes, defaultTheme } from "@/lib/themes";
-import { runCommand, completions, type Line } from "@/lib/commands";
+import { runCommand, completions, linkable, type Line } from "@/lib/commands";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
 import Sidebar from "./Sidebar";
+import type { Stats } from "@/app/api/stats/route";
 
 type Block = { id: number; prompt?: string; lines: Line[] };
 
 const QUICK = [
   "about",
   "experience",
+  "timeline",
+  "gh",
   "research",
   "projects",
   "finance",
@@ -32,6 +35,8 @@ export default function Terminal() {
   const [history, setHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
   const [theme, setTheme] = useState(defaultTheme.name);
+  // undefined while in flight, null if the endpoint failed.
+  const [stats, setStats] = useState<Stats | null | undefined>(undefined);
   const [crt, setCrt] = useState(true);
   const [matrix, setMatrix] = useState(false);
   const [shake, setShake] = useState(false);
@@ -106,7 +111,7 @@ export default function Terminal() {
   const submit = useCallback(
     (raw: string) => {
       const line = raw.trim();
-      const res = runCommand(line, { history });
+      const res = runCommand(line, { history, stats });
 
       if (line) setHistory((h) => [...h, line]);
       setHistIdx(-1);
@@ -114,9 +119,21 @@ export default function Terminal() {
 
       if (res.clear) {
         setBlocks([]);
+        const url = new URL(window.location.href);
+        url.searchParams.delete("c");
+        window.history.replaceState(null, "", url);
         return;
       }
       setBlocks((b) => [...b, { id: nextId.current++, prompt: line, lines: res.lines }]);
+
+      // Reflect the last meaningful command in the URL, so the page can be
+      // linked straight to a section.
+      const verb = line.split(/\s+/)[0]?.toLowerCase();
+      if (verb && linkable.has(verb)) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("c", verb);
+        window.history.replaceState(null, "", url);
+      }
 
       if (res.setTheme) setTheme(res.setTheme);
       if (res.setCrt !== undefined) setCrt(res.setCrt);
@@ -127,7 +144,7 @@ export default function Terminal() {
         setTimeout(() => setShake(false), 500);
       }
     },
-    [history]
+    [history, stats]
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -187,6 +204,29 @@ export default function Terminal() {
   const focus = () => {
     inputRef.current?.focus();
   };
+
+  // Warm the live stats so `gh` answers instantly. The response is cached for
+  // an hour, so this costs nothing on repeat visits.
+  useEffect(() => {
+    let live = true;
+    fetch("/api/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => live && setStats(d))
+      .catch(() => live && setStats(null));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Open straight to a section when the URL asks for one.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    const c = new URLSearchParams(window.location.search).get("c");
+    if (c && linkable.has(c.toLowerCase())) submit(c.toLowerCase());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ⌘K / Ctrl+K reaches the search from anywhere.
   useEffect(() => {

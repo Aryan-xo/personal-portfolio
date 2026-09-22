@@ -29,6 +29,25 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 | `contrast`, `gamma` | Standard tone controls, applied after equalisation. |
 | `alphaCut` | Alpha threshold for what counts as background. Raise it if a halo appears. |
 
+## Live data
+
+`app/api/stats/route.ts` pulls public GitHub and LeetCode figures — repo and
+star counts, a language breakdown, the most-starred repos, problems solved by
+difficulty — and the `gh` command renders them. The response is cached for an
+hour and each provider is fetched independently, so one being down doesn't take
+the other with it. Set `GITHUB_TOKEN` to lift the unauthenticated rate limit.
+
+## Sharing
+
+Running a content command writes it to the URL, so `?c=projects` opens straight
+to that section — useful when sending the link for a particular role. `clear`
+drops the parameter again.
+
+`app/opengraph-image.tsx` renders the share card at build time: the full ASCII
+portrait beside the name and prompt, in JetBrains Mono (bundled under
+`assets/fonts/`, since the image is rendered outside the browser). The layout
+also emits JSON-LD describing the person.
+
 ## Search
 
 `lib/search.ts` builds a flat index over everything in `config.ts` — 64 entries

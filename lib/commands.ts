@@ -2,6 +2,8 @@ import { config } from "./config";
 import { themes } from "./themes";
 import { portraitSmall } from "./portrait";
 import { search } from "./search";
+import { timeline } from "./timeline";
+import type { Stats } from "@/app/api/stats/route";
 
 export type Line = { text: string; cls?: string };
 export type CmdResult = {
@@ -55,6 +57,8 @@ export const commandList = [
   ["whoami", "the short version"],
   ["experience", "where I've worked"],
   ["research", "lab work in Japan"],
+  ["timeline", "the whole thing as a chart"],
+  ["gh", "live GitHub and LeetCode stats"],
   ["projects", "things I've built"],
   ["finance", "quant and valuation work"],
   ["skills", "what I work with"],
@@ -78,7 +82,7 @@ export const commandNames = [
   ...commandList.map((c) => c[0]),
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
-  "por", "certs", "hobbies", "cv", "grep", "search",
+  "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats",
 ];
 
 /**
@@ -102,7 +106,20 @@ export function completions(raw: string): string[] {
   return commandNames.filter((c) => c.startsWith(input.toLowerCase()) && c !== input.toLowerCase());
 }
 
-export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
+/**
+ * Commands worth putting in the address bar: they print content, so a link to
+ * one is meaningful. Toggles and one-shot actions are deliberately excluded.
+ */
+export const linkable = new Set([
+  "about", "whoami", "experience", "research", "projects", "finance", "skills",
+  "achievements", "leadership", "education", "certifications", "interests",
+  "contact", "social", "timeline", "neofetch", "help",
+]);
+
+export function runCommand(
+  raw: string,
+  ctx: { history: string[]; stats?: Stats | null }
+): CmdResult {
   const input = raw.trim();
   const [cmd, ...args] = input.split(/\s+/);
   const arg = args.join(" ");
@@ -217,6 +234,61 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
           ]),
         ],
       };
+
+    case "gh":
+    case "stats": {
+      const st = ctx.stats;
+      if (st === undefined) return { lines: [D("fetching live stats …")] };
+      if (st === null) {
+        return { lines: [{ text: "gh: could not reach the stats endpoint", cls: "err" }] };
+      }
+
+      const out: Line[] = [rule("live stats")];
+
+      if (st.github) {
+        const g = st.github;
+        const bar = (n: number, max: number) => "█".repeat(Math.max(1, Math.round((n / max) * 18)));
+        const maxLang = Math.max(...g.languages.map(([, n]) => n), 1);
+        out.push(
+          A(`  github.com/${g.user}`),
+          P(`    ${pad(String(g.repos), 6)}public repos`),
+          P(`    ${pad(String(g.stars), 6)}stars earned`),
+          P(`    ${pad(String(g.followers), 6)}followers`),
+          ...(g.updated ? [D(`    last push  ${new Date(g.updated).toISOString().slice(0, 10)}`)] : []),
+          P(),
+          D("    languages by repo count"),
+          ...g.languages.map(([name, n]) => P(`    ${pad(name, 20)}${bar(n, maxLang)} ${n}`)),
+          P(),
+          D("    most-starred repos"),
+          ...g.top.flatMap((r) => [
+            P(`    ${r.stars ? `★${r.stars} ` : "   "}${r.name}`),
+            ...(r.description ? wrap(r.description, 7).map((l) => D(l.text)) : []),
+          ]),
+          P()
+        );
+      } else {
+        out.push({ text: "  github: unavailable right now", cls: "err" }, P());
+      }
+
+      if (st.leetcode) {
+        const l = st.leetcode;
+        out.push(
+          A(`  leetcode.com/u/${l.user}`),
+          P(`    ${pad(String(l.total), 6)}problems solved`),
+          ...l.byLevel.map(([d, n]) => P(`    ${pad(d, 20)}${n}`)),
+          ...(l.ranking ? [D(`    global rank  ${l.ranking.toLocaleString()}`)] : [])
+        );
+      } else {
+        out.push({ text: "  leetcode: unavailable right now", cls: "err" });
+      }
+
+      out.push(P(), D("  Refreshed hourly, straight from the APIs."));
+      return { lines: out };
+    }
+
+    case "timeline":
+    case "gantt":
+      return { lines: [rule("timeline"), ...timeline()] };
 
     case "research":
       return {

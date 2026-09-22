@@ -1,0 +1,154 @@
+// Photo → ASCII portrait. Writes lib/portrait.ts
+//
+//   node scripts/img2ascii.mjs [source.jpg]
+//
+// Crops to the subject, strips the background with a segmentation model
+// (cached as cutout.png), then maps luminance onto a character ramp.
+// Tune OPTS and re-run.
+import { removeBackground } from "@imgly/background-removal-node";
+import sharp from "sharp";
+import { writeFile, readFile, access } from "node:fs/promises";
+
+const src = process.argv[2] ?? "me.jpg";
+
+const OPTS = {
+  width: 92,          // character columns for the header portrait
+  smallWidth: 30,     // compact portrait used by `neofetch`
+  aspect: 2.05,       // terminal cell height ÷ width
+  crop: { left: 1010, top: 415, width: 690, height: 840 }, // null for the whole frame
+  alphaCut: 190,      // alpha below this counts as background
+  equalise: 0.25,     // 0 = the photo's own tones, 1 = full histogram equalisation
+  gamma: 1.0,         // <1 lifts shadows so dark clothing keeps its shape
+  contrast: 1.2,
+  localContrast: 0,   // unsharp amount across cells; 0 disables
+  localRadius: 9,     // cells
+  trimBlank: true,    // drop fully blank rows top and bottom
+};
+
+const RAMP = "@#*+=:. ".split(""); // dark → light, trailing space = empty
+
+const CUTOUT = "cutout.png";
+let cut;
+try {
+  await access(CUTOUT);
+  cut = await readFile(CUTOUT);
+  console.error("using cached cutout.png (delete it to re-segment)");
+} catch {
+  console.error("segmenting subject from background …");
+  let pipe = sharp(src).rotate();
+  if (OPTS.crop) pipe = pipe.extract(OPTS.crop);
+  const blob = await removeBackground(new Blob([await pipe.png().toBuffer()], { type: "image/png" }));
+  cut = Buffer.from(await blob.arrayBuffer());
+  await writeFile(CUTOUT, cut);
+}
+
+const meta = await sharp(cut).metadata();
+async function render(W) {
+const H = Math.max(1, Math.round((W * meta.height) / meta.width / OPTS.aspect));
+
+const { data } = await sharp(cut)
+  .sharpen({ sigma: 1.4 })
+  .resize(W, H, { fit: "fill" })
+  .ensureAlpha()
+  .raw()
+  .toBuffer({ resolveWithObject: true });
+
+const lum = new Float32Array(W * H);
+const keep = new Uint8Array(W * H);
+for (let i = 0, p = 0; i < W * H; i++, p += 4) {
+  keep[i] = data[p + 3] >= OPTS.alphaCut ? 1 : 0;
+  lum[i] = (0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]) / 255;
+}
+
+// Local contrast: subtract a blurred copy so large dark areas (a suit) don't
+// flatten into one solid block and swallow the face.
+if (OPTS.localContrast > 0) {
+  const r = OPTS.localRadius;
+  const blur = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let sum = 0, n = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= H) continue;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= W) continue;
+          const j = yy * W + xx;
+          if (!keep[j]) continue;
+          sum += lum[j];
+          n++;
+        }
+      }
+      blur[y * W + x] = n ? sum / n : lum[y * W + x];
+    }
+  }
+  for (let i = 0; i < lum.length; i++) {
+    if (keep[i]) lum[i] = lum[i] + OPTS.localContrast * (lum[i] - blur[i]) * 2.2;
+  }
+}
+
+// Histogram-equalise across the subject. A linear stretch fails on a backlit
+// photo, where almost every pixel sits in the bottom third of the range.
+const hist = new Float64Array(256);
+let kept = 0;
+for (let i = 0; i < lum.length; i++) {
+  if (!keep[i]) continue;
+  hist[Math.max(0, Math.min(255, Math.round(lum[i] * 255)))]++;
+  kept++;
+}
+const cdf = new Float64Array(256);
+let acc = 0;
+for (let i = 0; i < 256; i++) {
+  acc += hist[i];
+  cdf[i] = acc / kept;
+}
+
+const equalise = (x) => {
+  const e = cdf[Math.max(0, Math.min(255, Math.round(x * 255)))];
+  // Blend equalised against the original so the result keeps some of the
+  // photo's real tonality instead of looking like pure noise.
+  return OPTS.equalise * e + (1 - OPTS.equalise) * Math.max(0, Math.min(1, x));
+};
+
+const rows = [], shade = [];
+for (let y = 0; y < H; y++) {
+  let line = "", sh = "";
+  for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    if (!keep[i]) { line += " "; sh += "0"; continue; }
+    let v = Math.pow(equalise(lum[i]), OPTS.gamma);
+    v = Math.max(0, Math.min(1, (v - 0.5) * OPTS.contrast + 0.5));
+    // v is brightness: dark pixels take the dense end of the ramp.
+    line += RAMP[Math.min(RAMP.length - 1, Math.round(v * (RAMP.length - 1)))];
+    // shade drives glow intensity in the UI, so denser = brighter.
+    sh += String(Math.max(0, Math.min(9, Math.round((1 - v) * 9))));
+  }
+  rows.push(line.replace(/\s+$/, ""));
+  shade.push(sh);
+}
+
+if (OPTS.trimBlank) {
+  while (rows.length && !rows[0].trim()) { rows.shift(); shade.shift(); }
+  while (rows.length && !rows.at(-1).trim()) { rows.pop(); shade.pop(); }
+}
+
+return { rows, shade };
+}
+
+const big = await render(OPTS.width);
+const small = await render(OPTS.smallWidth);
+
+await writeFile(
+  "lib/portrait.ts",
+  `// Generated by scripts/img2ascii.mjs — do not edit by hand.
+export const portrait: string[] = ${JSON.stringify(big.rows, null, 2)};
+export const portraitShade: string[] = ${JSON.stringify(big.shade, null, 2)};
+
+/** Compact variant, sized to sit beside a column of text. */
+export const portraitSmall: string[] = ${JSON.stringify(small.rows, null, 2)};
+export const portraitSmallShade: string[] = ${JSON.stringify(small.shade, null, 2)};
+`
+);
+console.log(big.rows.join("\n"));
+console.error(`\n→ lib/portrait.ts (${OPTS.width}×${big.rows.length} and ${OPTS.smallWidth}×${small.rows.length})`);

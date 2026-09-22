@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Terminal Portfolio
 
-## Getting Started
+A CRT-terminal portfolio: BIOS boot sequence, an ASCII-art portrait generated
+from a photo, and ~25 commands. Next.js 16 + TypeScript, statically rendered.
 
-First, run the development server:
+## Editing the content
+
+Everything visible on the site lives in **`lib/config.ts`** — name, experience,
+projects, skills, achievements, contact details. Nothing else needs touching to
+keep the site current.
+
+## Regenerating the ASCII portrait
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+node scripts/img2ascii.mjs me.jpg      # writes lib/portrait.ts
+node scripts/preview-ascii.mjs out.png # render it as an image to check it
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The first run segments the subject from the background and caches the result as
+`cutout.png`; delete that file after changing `OPTS.crop` so it re-segments.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Option | Effect |
+| --- | --- |
+| `crop` | Region of the source photo to use. Crop tight to head-and-shoulders — a full-body shot leaves the face too small to read. |
+| `width` / `smallWidth` | Character columns for the header portrait and for `neofetch`. |
+| `equalise` | `0` keeps the photo's own tones, `1` fully flattens the histogram. Around `0.25` keeps a face legible. |
+| `contrast`, `gamma` | Standard tone controls, applied after equalisation. |
+| `alphaCut` | Alpha threshold for what counts as background. Raise it if a halo appears. |
 
-## Learn More
+## Commands
 
-To learn more about Next.js, take a look at the following resources:
+`help` lists the public ones. `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`,
+`date`, `echo`, `history` and `exit` are there too but unlisted.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. The choice
+persists in `localStorage`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Develop
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev     # http://localhost:3000
+npm run build
+```

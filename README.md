@@ -60,10 +60,11 @@ Four visual layers, all built from the same data the text commands use:
   than per-character state because the portrait is ~4,500 spans.
 - The sidebar renders a card per account — a language donut and a full
   contribution calendar with month labels — plus LeetCode difficulty bars, all
-  as inline SVG in the theme's own colour. The terminal column takes only the
-  width its text wraps to and the sidebar absorbs the rest, so the panel is a
-  container query: past 440px its lists split into columns rather than
-  stretching label and value to opposite margins.
+  as inline SVG in the theme's own colour. The divider between the two panes
+  drags, so the split is the reader's to choose — double-click resets it, arrow
+  keys adjust it when focused, and the width persists. Because the sidebar can
+  be any width, it is a container query: past 440px its lists split into
+  columns rather than stretching label and value to opposite margins.
 - After two minutes untouched the portrait dissolves into a drifting-character
   screensaver that gathers and scatters on a slow cycle. Any input wakes it,
   and it never starts for readers who ask for reduced motion.

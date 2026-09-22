@@ -108,16 +108,58 @@ html.light .crt::after { display: none; }
 
 /* ── Terminal ───────────────────────────────────────────── */
 /* Terminal on the left, search and contents on the right. */
-/* The terminal takes only the width its text actually wraps to; the sidebar
-   absorbs everything left over, up to a width where a donut still reads. */
+/* The sidebar's width is a variable the divider writes to, so dragging changes
+   the grid template and nothing else. The fallback is used until Resizer
+   mounts and on the server. */
 .shell {
   display: grid;
-  grid-template-columns: minmax(0, 104ch) minmax(340px, 1fr);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) 11px var(--side-w, clamp(340px, 34%, 960px));
   max-width: 1780px;
   margin: 0 auto;
   height: 100dvh;
 }
+
+/* ── Divider ────────────────────────────────────────────── */
+.resizer {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A thin bar is hard to grab, so the hit area is wider than the line. */
+  outline: none;
+}
+.resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 5px;
+  background: color-mix(in srgb, var(--dim) 26%, transparent);
+  transition: background 140ms ease;
+}
+.resizer:hover::before,
+.resizer:focus-visible::before,
+body.resizing .resizer::before {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--glow), .45);
+}
+
+/* Three dots, so the divider reads as a handle rather than a border. */
+.resizer-grip {
+  position: relative;
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--dim) 0 3px, transparent 3px) 0 0 / 3px 8px repeat-y;
+  opacity: .8;
+}
+.resizer:hover .resizer-grip,
+.resizer:focus-visible .resizer-grip { background-image: linear-gradient(var(--accent) 0 3px, transparent 3px); }
+
+/* While dragging, nothing else should take the pointer or select. */
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 
 /* The terminal owns the viewport: only the output region scrolls, so the
    prompt stays put instead of walking off the bottom of the page. */
@@ -125,7 +167,7 @@ html.light .crt::after { display: none; }
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 3vh 1.25rem 0 2.5rem;
+  padding: 3vh 1.5rem 0 2.5rem;
   min-width: 0;
   cursor: text;
   overflow: hidden;
@@ -330,13 +372,12 @@ html.light .crt::after { display: none; }
 .sidebar {
   height: 100dvh;
   /* A viewport-relative right padding was eating a third of the column. */
-  padding: 3vh 1.25rem 1.25rem 1.25rem;
+  padding: 3vh 1.25rem 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
   min-width: 0;
   font-size: .86em;
-  border-left: 1px solid color-mix(in srgb, var(--dim) 26%, transparent);
   /* Lets the panel lay itself out from its own width rather than the page's. */
   container-type: inline-size;
   container-name: side;
@@ -485,7 +526,7 @@ html.light .crt::after { display: none; }
    `find` command covers the same ground. */
 @media (max-width: 1240px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { display: none; }
+  .sidebar, .resizer { display: none; }
   .term { padding: 3vh 4vw 0; max-width: 1080px; margin: 0 auto; }
 }
 

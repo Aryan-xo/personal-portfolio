@@ -8,6 +8,7 @@ import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
 import Sidebar from "./Sidebar";
 import Screensaver from "./Screensaver";
+import Resizer from "./Resizer";
 import type { Stats } from "@/app/api/stats/route";
 
 type Block = { id: number; prompt?: string; lines: Line[] };
@@ -339,6 +340,8 @@ export default function Terminal() {
         ))}
       </nav>
     </div>
+
+    <Resizer />
 
     <Sidebar
       stats={stats}

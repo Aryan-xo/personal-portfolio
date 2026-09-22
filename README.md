@@ -105,6 +105,30 @@ portrait beside the name and prompt, in JetBrains Mono (bundled under
 `assets/fonts/`, since the image is rendered outside the browser). The layout
 also emits JSON-LD describing the person.
 
+## The tour
+
+`tour [name]` has the terminal type a sequence to itself, keystroke by
+keystroke, waiting for each command's output to settle before starting the
+next. Any key or click stops it. `?play=backend` runs a named sequence on load,
+so a link can be aimed at whoever is opening it — the sequences live in
+`lib/tours.ts`.
+
+It exists because a visitor who will not type sees an almost empty screen, and
+that describes most people a portfolio is sent to.
+
+## Sound
+
+Off by default, and synthesised rather than loaded — a portfolio should not
+ship half a megabyte of samples to make a clicking noise. `lib/audio.ts` has
+key clicks, a CRT power-on (the thunk of the degauss coil, then the flyback
+whine at 15.7kHz, which is the frequency an actual television line output ran
+at), and a dial-up handshake over the boot sequence.
+
+Browsers will not start audio before a gesture, so the context is created
+lazily on the first call that follows one and anything earlier is dropped. The
+handshake is therefore only heard by someone who enabled sound on a previous
+visit.
+
 ## Search
 
 `lib/search.ts` builds a flat index over everything in `config.ts` — 64 entries

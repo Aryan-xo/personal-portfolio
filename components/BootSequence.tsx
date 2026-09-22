@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { config } from "@/lib/config";
+import * as audio from "@/lib/audio";
 
 const STEPS: [string, string][] = [
   ["ARYAN BIOS v4.2.1 — (C) 2026", ""],
@@ -28,6 +29,18 @@ export default function BootSequence({ onDone }: { onDone: () => void }) {
     e?.preventDefault();
     onDone();
   };
+
+  // Only heard by someone who turned sound on previously; a first visit has
+  // not had the gesture a browser requires before it will play anything.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("sound") === "on") {
+        audio.setSound(true);
+        audio.powerOn();
+        audio.handshake();
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (n >= STEPS.length) {

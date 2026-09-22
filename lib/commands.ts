@@ -3,6 +3,7 @@ import { themes } from "./themes";
 import { portraitSmall } from "./portrait";
 import { search, byId } from "./search";
 import { timeline } from "./timeline";
+import { tours, tourNames } from "./tours";
 import type { Stats } from "@/app/api/stats/route";
 import { heatmap, bars } from "./heatmap";
 import {
@@ -16,9 +17,12 @@ import {
 export type { Line };
 export type CmdResult = {
   lines: Line[];
+  /** Hands the terminal a sequence to type to itself. */
+  tour?: string[];
   clear?: boolean;
   setTheme?: string;
   setCrt?: boolean;
+  setSound?: boolean;
   open?: string;
   effect?: "matrix" | "shake";
 };
@@ -30,6 +34,7 @@ export const commandList = [
   ["experience", "where I've worked"],
   ["research", "lab work in Japan"],
   ["timeline", "the whole thing as a chart"],
+  ["tour", "let the terminal show you around"],
   ["gh", "live GitHub and LeetCode stats"],
   ["contrib", "commit activity as a heatmap"],
   ["projects", "things I've built"],
@@ -47,6 +52,7 @@ export const commandList = [
   ["theme", "switch colour scheme"],
   ["find", "search everything · find <term>"],
   ["crt", "toggle scanlines and glow"],
+  ["sound", "keyclicks and a modem, off by default"],
   ["banner", "reprint the header"],
   ["clear", "wipe the screen"],
 ] as const;
@@ -56,6 +62,7 @@ export const commandNames = [
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
   "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats", "heatmap",
+  "play", "audio",
   "show",
 ];
 
@@ -70,6 +77,9 @@ export function completions(raw: string): string[] {
     const [, cmd, , partial] = m;
     if (cmd.toLowerCase() === "theme") {
       return themes.map((t) => t.name).filter((n) => n.startsWith(partial.toLowerCase()));
+    }
+    if (/^(tour|play)$/i.test(cmd)) {
+      return tourNames.filter((n) => n.startsWith(partial.toLowerCase()));
     }
     if (cmd.toLowerCase() === "crt") {
       return ["on", "off"].filter((n) => n.startsWith(partial.toLowerCase()));
@@ -179,6 +189,24 @@ export function runCommand(
           ...c.education.flatMap((e) => [...renderEducation(e), P()]),
         ],
       };
+
+    case "tour":
+    case "play": {
+      const name = (arg || "intro").toLowerCase();
+      const t = tours[name];
+      if (!t) {
+        return {
+          lines: [
+            D("usage: tour [name]"),
+            ...Object.entries(tours).map(([k, v]) => P(`  ${pad(k, 13)}${v.label}`)),
+          ],
+        };
+      }
+      return {
+        lines: [D(`tour: ${t.label} — press any key to stop`)],
+        tour: [...t.commands],
+      };
+    }
 
     case "contrib":
     case "heatmap": {
@@ -435,6 +463,22 @@ export function runCommand(
           D("  `show <id>` opens one of these on its own."),
         ],
       };
+    }
+
+    case "sound":
+    case "audio": {
+      const on = /^(on|yes|1)$/i.test(arg);
+      const off = /^(off|no|0|mute)$/i.test(arg);
+      if (!on && !off) {
+        return {
+          lines: [
+            D("usage: sound on | sound off"),
+            P("  Key clicks as output arrives, a modem handshake over the boot"),
+            P("  sequence, and the thunk of a CRT warming up. All synthesised."),
+          ],
+        };
+      }
+      return { lines: [D(`sound → ${on ? "on" : "off"}`)], setSound: on };
     }
 
     case "crt": {

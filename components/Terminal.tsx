@@ -4,6 +4,8 @@ import { config } from "@/lib/config";
 import { themes, defaultTheme } from "@/lib/themes";
 import { runCommand, completions, linkable, type Line } from "@/lib/commands";
 import { setWrap } from "@/lib/render";
+import * as audio from "@/lib/audio";
+import { tours } from "@/lib/tours";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
@@ -48,6 +50,9 @@ export default function Terminal() {
   const [stats, setStats] = useState<Stats | null | undefined>(undefined);
   const [crt, setCrt] = useState(true);
   const [cols, setCols] = useState(96);
+  const [sound, setSound] = useState(false);
+  const touring = useRef(false);
+  const settled = useRef(0);
   const [matrix, setMatrix] = useState(false);
   const [idle, setIdle] = useState(false);
   const [shake, setShake] = useState(false);
@@ -78,6 +83,15 @@ export default function Terminal() {
     } catch {}
   }, []);
 
+  const chooseSound = useCallback((on: boolean) => {
+    setSound(on);
+    audio.setSound(on);
+    try {
+      localStorage.setItem("sound", on ? "on" : "off");
+    } catch {}
+    if (on) audio.powerOn();
+  }, []);
+
   const chooseCrt = useCallback((on: boolean) => {
     setCrt(on);
     try {
@@ -90,6 +104,9 @@ export default function Terminal() {
       const saved = localStorage.getItem("theme");
       if (saved && themes.some((t) => t.name === saved)) setTheme(saved);
       setCrt(localStorage.getItem("crt") !== "off");
+      const s = localStorage.getItem("sound") === "on";
+      setSound(s);
+      audio.setSound(s);
     } catch {}
   }, []);
 
@@ -164,6 +181,8 @@ export default function Terminal() {
 
       if (res.setTheme) chooseTheme(res.setTheme);
       if (res.setCrt !== undefined) chooseCrt(res.setCrt);
+      if (res.setSound !== undefined) chooseSound(res.setSound);
+      if (res.tour) void runTour(res.tour);
       if (res.open) window.open(res.open, "_blank", "noopener,noreferrer");
       if (res.effect === "matrix") setMatrix(true);
       if (res.effect === "shake") {
@@ -171,11 +190,69 @@ export default function Terminal() {
         setTimeout(() => setShake(false), 500);
       }
     },
-    [history, stats, chooseTheme, chooseCrt]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [history, stats, chooseTheme, chooseCrt, chooseSound]
   );
+
+  /**
+   * Types a sequence into the prompt as though someone were at the keyboard,
+   * waiting for each command's output to settle before starting the next. Any
+   * key or click stops it, since a visitor who has decided to drive should not
+   * have to fight the demo.
+   */
+  const runTour = useCallback(
+    async (commands: string[]) => {
+      if (touring.current) return;
+      touring.current = true;
+
+      const wait = (ms: number) =>
+        new Promise((r) => setTimeout(r, ms));
+      const stopped = () => !touring.current;
+
+      await wait(700);
+      for (const cmd of commands) {
+        if (stopped()) break;
+        for (const ch of cmd) {
+          if (stopped()) break;
+          setInput((v) => v + ch);
+          audio.key(true);
+          await wait(45 + Math.random() * 65);
+        }
+        if (stopped()) break;
+        await wait(260);
+        audio.enterKey();
+
+        const before = settled.current;
+        submit(cmd);
+
+        // Wait for the streamed output, with a ceiling in case it never lands.
+        const until = Date.now() + 6000;
+        while (settled.current === before && Date.now() < until && !stopped()) {
+          await wait(80);
+        }
+        await wait(650);
+      }
+      touring.current = false;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  // Any input of the reader's own ends the tour.
+  useEffect(() => {
+    const stop = () => {
+      touring.current = false;
+    };
+    for (const ev of ["keydown", "pointerdown"]) window.addEventListener(ev, stop);
+    return () => {
+      for (const ev of ["keydown", "pointerdown"]) window.removeEventListener(ev, stop);
+    };
+  }, []);
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     follow(true);
+    if (e.key === "Enter") audio.enterKey();
+    else if (e.key.length === 1 || e.key === "Backspace") audio.key();
 
     // `/` on an empty prompt jumps to the sidebar search, the way it does in
     // less and vim.
@@ -311,7 +388,13 @@ export default function Terminal() {
   useEffect(() => {
     if (opened.current) return;
     opened.current = true;
-    const c = new URLSearchParams(window.location.search).get("c");
+    const q = new URLSearchParams(window.location.search);
+    const play = q.get("play")?.toLowerCase();
+    if (play && tours[play]) {
+      void runTour([...tours[play].commands]);
+      return;
+    }
+    const c = q.get("c");
     if (c && linkable.has(c.toLowerCase())) submit(c.toLowerCase());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -348,7 +431,14 @@ export default function Terminal() {
             <p className="hint">
               Type <span className="accent">help</span> and press Enter.
             </p>
-            <ThemePicker theme={theme} onTheme={chooseTheme} crt={crt} onCrt={chooseCrt} />
+            <ThemePicker
+              theme={theme}
+              onTheme={chooseTheme}
+              crt={crt}
+              onCrt={chooseCrt}
+              sound={sound}
+              onSound={chooseSound}
+            />
           </div>
         </header>
 
@@ -368,7 +458,10 @@ export default function Terminal() {
               // forced on completion, so finished output always lands at the
               // prompt.
               onProgress={() => follow()}
-              onDone={() => follow(true)}
+              onDone={() => {
+                follow(true);
+                settled.current += 1;
+              }}
             />
           </div>
         ))}

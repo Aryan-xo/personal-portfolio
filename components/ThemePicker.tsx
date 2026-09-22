@@ -11,11 +11,15 @@ export default function ThemePicker({
   onTheme,
   crt,
   onCrt,
+  sound,
+  onSound,
 }: {
   theme: string;
   onTheme: (name: string) => void;
   crt: boolean;
   onCrt: (on: boolean) => void;
+  sound: boolean;
+  onSound: (on: boolean) => void;
 }) {
   return (
     <div className="picker" onClick={(e) => e.stopPropagation()}>
@@ -43,6 +47,15 @@ export default function ThemePicker({
         title={crt ? "Turn the scanlines and glow off" : "Turn the scanlines and glow on"}
       >
         crt {crt ? "on" : "off"}
+      </button>
+
+      <button
+        className={`picker-crt${sound ? " is-on" : ""}`}
+        onClick={() => onSound(!sound)}
+        aria-pressed={sound}
+        title={sound ? "Mute the key clicks" : "Key clicks, a modem and a CRT warming up"}
+      >
+        sound {sound ? "on" : "off"}
       </button>
     </div>
   );

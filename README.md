@@ -29,6 +29,21 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 | `contrast`, `gamma` | Standard tone controls, applied after equalisation. |
 | `alphaCut` | Alpha threshold for what counts as background. Raise it if a halo appears. |
 
+## Search
+
+`lib/search.ts` builds a flat index over everything in `config.ts` — 64 entries
+at present — and scores queries by where the term lands: a whole word in a
+title outranks a prefix, which outranks a substring buried in the body. Every
+query term has to match somewhere for an entry to count.
+
+The sidebar searches as you type and highlights the matches; `/` on an empty
+prompt or ⌘K anywhere jumps to the box, Escape returns to the terminal, and
+clicking a result runs the command that prints it in full. Idle, the sidebar
+shows a contents list, a few counts and the outbound links.
+
+The `find <term>` command runs the same search from the terminal, which is also
+the fallback below 1100px where the sidebar is hidden.
+
 ## Commands
 
 `help` lists the public ones: about, whoami, experience, research, projects,
@@ -37,7 +52,7 @@ contact, social, resume, neofetch, theme, banner, clear.
 
 Unlisted: `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`, `date`, `echo`,
 `history`, `exit`, plus aliases (`work`, `awards`, `quant`, `por`, `certs`,
-`hobbies`, `cv`).
+`hobbies`, `cv`, `grep`, `search`).
 
 Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
 an ambiguous prefix prints all matches.

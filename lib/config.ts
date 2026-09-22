@@ -54,6 +54,7 @@ export const config = {
       role: "Software Engineer",
       period: "Jun 2026 — Present",
       location: "Bangalore, India",
+      note: "",
       bullets: [
         "Designed a centralized communications service replacing per-service messaging code in 5 backends — providers behind a channel abstraction, per-channel retries, webhook-driven delivery-status reconciliation. 200K+ notifications/month over SMS, WhatsApp, email and Slack.",
         "Instrumented Datadog APM with custom spans and monitors across 3 services, cutting detection of silent Slack and WhatsApp delivery failures from hours to seconds via provider-level error-rate alerting.",

@@ -1,6 +1,7 @@
 import { config } from "./config";
 import { themes } from "./themes";
 import { portraitSmall } from "./portrait";
+import { search } from "./search";
 
 export type Line = { text: string; cls?: string };
 export type CmdResult = {
@@ -67,6 +68,7 @@ export const commandList = [
   ["resume", "download the PDF"],
   ["neofetch", "system info, portfolio edition"],
   ["theme", "switch colour scheme"],
+  ["find", "search everything · find <term>"],
   ["crt", "toggle scanlines and glow"],
   ["banner", "reprint the header"],
   ["clear", "wipe the screen"],
@@ -76,7 +78,7 @@ export const commandNames = [
   ...commandList.map((c) => c[0]),
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
-  "por", "certs", "hobbies", "cv",
+  "por", "certs", "hobbies", "cv", "grep", "search",
 ];
 
 /**
@@ -352,6 +354,36 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       const t = themes.find((x) => x.name === arg.toLowerCase());
       if (!t) return { lines: [{ text: `theme: no such theme: ${arg}`, cls: "err" }] };
       return { lines: [D(`theme → ${t.name}`)], setTheme: t.name };
+    }
+
+    case "find":
+    case "grep":
+    case "search": {
+      if (!arg) {
+        return {
+          lines: [
+            D("usage: find <term>"),
+            P("  Searches every section — experience, projects, skills, the lot."),
+            D("  The sidebar search box does the same thing as you type."),
+          ],
+        };
+      }
+      const hits = search(arg, 10);
+      if (!hits.length) {
+        return { lines: [{ text: `find: nothing matches "${arg}"`, cls: "err" }] };
+      }
+      return {
+        lines: [
+          rule(`find "${arg}" — ${hits.length} match${hits.length === 1 ? "" : "es"}`),
+          ...hits.flatMap((h) => [
+            A(`  ${h.title}`),
+            D(`    ${h.section}${h.meta ? ` · ${h.meta}` : ""}`),
+            ...wrap(h.snippet, 4).map((l) => D(l.text)),
+            P(),
+          ]),
+          D(`  Run a section name to see any of these in full.`),
+        ],
+      };
     }
 
     case "crt": {

@@ -107,15 +107,24 @@ html.light .crt::after { display: none; }
 .boot-skip { position: fixed; bottom: 4vh; left: 5vw; font-size: 11px; opacity: .55; }
 
 /* ── Terminal ───────────────────────────────────────────── */
+/* Terminal on the left, search and contents on the right. */
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 2.2rem;
+  max-width: 1500px;
+  margin: 0 auto;
+  height: 100dvh;
+}
+
 /* The terminal owns the viewport: only the output region scrolls, so the
    prompt stays put instead of walking off the bottom of the page. */
 .term {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 3vh 4vw 0;
-  max-width: 1080px;
-  margin: 0 auto;
+  padding: 3vh 0 0 4vw;
+  min-width: 0;
   cursor: text;
   overflow: hidden;
 }
@@ -280,4 +289,165 @@ html.light .crt::after { display: none; }
 @media (prefers-contrast: more) {
   :root { --scanline: 0; --glow-text: none; }
   .crt::after { display: none; }
+}
+
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.sidebar {
+  height: 100dvh;
+  padding: 3vh 4vw 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+  font-size: .86em;
+  border-left: 1px solid color-mix(in srgb, var(--dim) 26%, transparent);
+  padding-left: 1.6rem;
+}
+
+.side-search {
+  display: flex;
+  align-items: center;
+  gap: .5ch;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--dim) 55%, transparent);
+  border-radius: 3px;
+  padding: .45rem .6rem;
+}
+.side-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.side-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--fg);
+  font: inherit;
+  text-shadow: inherit;
+}
+.side-search input::placeholder { color: var(--dim); opacity: .8; }
+.side-clear {
+  background: none;
+  border: 0;
+  color: var(--dim);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 .2rem;
+}
+.side-clear:hover { color: var(--accent); }
+
+.side-kbd {
+  font: inherit;
+  font-size: .85em;
+  border: 1px solid color-mix(in srgb, var(--dim) 50%, transparent);
+  border-radius: 3px;
+  padding: 0 .45ch;
+  line-height: 1.4;
+}
+
+.side-results, .side-idle {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dim) 50%, transparent) transparent;
+}
+.side-results::-webkit-scrollbar,
+.side-idle::-webkit-scrollbar { width: 6px; }
+.side-results::-webkit-scrollbar-thumb,
+.side-idle::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--dim) 45%, transparent);
+  border-radius: 3px;
+}
+
+.side-count { margin: 0 0 .7rem; font-size: .92em; }
+
+.side-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  padding: .45rem .6rem;
+  margin-bottom: .35rem;
+  color: inherit;
+  font: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
+  border-radius: 0 3px 3px 0;
+}
+.side-hit:hover, .side-hit:focus-visible {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  outline: none;
+}
+.side-tag {
+  display: block;
+  font-size: .8em;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.side-title { display: block; color: var(--accent); line-height: 1.35; }
+.side-meta  { display: block; font-size: .88em; }
+.side-snip  { display: block; font-size: .88em; line-height: 1.45; margin-top: .25rem; }
+
+.sidebar mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--fg);
+  border-radius: 2px;
+}
+
+.side-label {
+  margin: 0 0 .5rem;
+  font-size: .82em;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.side-label:not(:first-child) { margin-top: 1.5rem; }
+
+.side-toc, .side-links { list-style: none; margin: 0; padding: 0; }
+.side-toc button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: .22rem .3rem;
+  color: inherit;
+  font: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.side-toc button:hover, .side-toc button:focus-visible {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--accent);
+  outline: none;
+}
+
+.side-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .8rem; margin: 0; }
+.side-stats dt { font-size: .84em; letter-spacing: .06em; }
+.side-stats dd { margin: 0; font-size: 1.35em; line-height: 1.1; }
+
+.side-links a {
+  display: block;
+  padding: .22rem .3rem;
+  color: var(--fg);
+  text-decoration: none;
+  border-radius: 2px;
+}
+.side-links a:hover { color: var(--accent); background: color-mix(in srgb, var(--fg) 8%, transparent); }
+
+/* Below this the sidebar would crowd the terminal, so it goes away and the
+   `find` command covers the same ground. */
+@media (max-width: 1100px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { display: none; }
+  .term { padding: 3vh 4vw 0; max-width: 1080px; margin: 0 auto; }
 }

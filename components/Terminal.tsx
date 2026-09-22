@@ -6,6 +6,7 @@ import { runCommand, completions, type Line } from "@/lib/commands";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
+import Sidebar from "./Sidebar";
 
 type Block = { id: number; prompt?: string; lines: Line[] };
 
@@ -131,6 +132,17 @@ export default function Terminal() {
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     follow(true);
+
+    // `/` on an empty prompt jumps to the sidebar search, the way it does in
+    // less and vim.
+    if (e.key === "/" && !input) {
+      const box = document.getElementById("side-search") as HTMLInputElement | null;
+      if (box) {
+        e.preventDefault();
+        box.focus();
+        return;
+      }
+    }
     if (e.key === "Enter") {
       submit(input);
     } else if (e.key === "ArrowUp") {
@@ -176,7 +188,22 @@ export default function Terminal() {
     inputRef.current?.focus();
   };
 
+  // ⌘K / Ctrl+K reaches the search from anywhere.
+  useEffect(() => {
+    const onHotkey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
+      const box = document.getElementById("side-search") as HTMLInputElement | null;
+      if (!box) return;
+      e.preventDefault();
+      box.focus();
+      box.select();
+    };
+    window.addEventListener("keydown", onHotkey);
+    return () => window.removeEventListener("keydown", onHotkey);
+  }, []);
+
   return (
+    <div className="shell">
     <div className={`term ${shake ? "shake" : ""}`} onClick={focus}>
       {matrix && <MatrixRain onDone={() => setMatrix(false)} />}
 
@@ -247,6 +274,14 @@ export default function Terminal() {
           </button>
         ))}
       </nav>
+    </div>
+
+    <Sidebar
+      onRun={(cmd) => {
+        submit(cmd);
+        focus();
+      }}
+    />
     </div>
   );
 }

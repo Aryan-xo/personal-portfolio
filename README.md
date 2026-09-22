@@ -12,9 +12,28 @@ keep the site current.
 ## Regenerating the ASCII portrait
 
 ```bash
+node scripts/calibrate-ramp.mjs        # measure the font, writes lib/ramp.json
 node scripts/img2ascii.mjs me.jpg      # writes lib/portrait.ts
 node scripts/preview-ascii.mjs out.png # render it as an image to check it
 ```
+
+Three things decide how good the output is.
+
+**Tone.** Luminance is dithered (Floyd–Steinberg) rather than rounded, so a
+gradient dissolves into a mix of two glyphs instead of banding into flat steps.
+
+**Structure.** Edges are found with a Sobel filter and drawn with glyphs that
+follow their direction — `|` `/` `\` `_` `-`. This is what lets a pair of
+glasses and a jawline read as lines rather than as smudges of roughly the right
+darkness.
+
+**The ramp.** `calibrate-ramp.mjs` rasterises each candidate character in the
+font the site actually renders with, measures its ink coverage, and picks the
+twelve whose coverage is most evenly spaced. Guessing which characters look
+darker is what produces banding: two glyphs that feel different often carry
+near-identical coverage, so a stretch of skin flattens into one tone. The
+measured ramp turned out to need `r`, `c` and `h` in the mid-range — none of
+which an intuitive ramp like `@#*+=:.` contains.
 
 The first run segments the subject from the background and caches the result as
 `cutout.png`; delete that file after changing `OPTS.crop` so it re-segments.
@@ -26,7 +45,10 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 | `crop` | Region of the source photo to use. Crop tight to head-and-shoulders — a full-body shot leaves the face too small to read. |
 | `width` / `smallWidth` | Character columns for the header portrait and for `neofetch`. |
 | `equalise` | `0` keeps the photo's own tones, `1` fully flattens the histogram. Around `0.25` keeps a face legible. |
-| `contrast`, `gamma` | Standard tone controls, applied after equalisation. |
+| `exposure` | Lightens everything before quantising. Dithering fills flat areas with texture, so this is usually what you reach for when the result reads too heavy. |
+| `dither` | How much quantisation error carries into neighbouring cells. |
+| `edges` | Threshold for directional glyphs; `0` disables them. |
+| `contrast`, `gamma` | Standard tone controls. |
 | `alphaCut` | Alpha threshold for what counts as background. Raise it if a halo appears. |
 
 ## Live data

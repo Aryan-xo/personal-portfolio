@@ -191,34 +191,6 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 .portrait-wrap {
   position: relative;
   flex-shrink: 0;
-  --mx: -999px;
-  --my: -999px;
-  --torch: 0;
-}
-
-/* The bright copy is clipped to a disc around the pointer, so moving across
-   the portrait lights it up without touching a single character's state. */
-.portrait-torch {
-  position: absolute;
-  inset: 0;
-  color: var(--accent);
-  opacity: calc(var(--torch) * 1);
-  transition: opacity 260ms ease;
-  pointer-events: none;
-  text-shadow: 0 0 6px rgba(var(--glow), .7);
-  -webkit-mask-image: radial-gradient(
-    circle 74px at var(--mx) var(--my),
-    #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%
-  );
-  mask-image: radial-gradient(
-    circle 74px at var(--mx) var(--my),
-    #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%
-  );
-}
-.portrait-torch span { opacity: 1 !important; }
-
-@media (prefers-reduced-motion: reduce) {
-  .portrait-torch { display: none; }
 }
 
 .portrait {
@@ -392,9 +364,6 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 }
 
 /* A touch device has no pointer to light the portrait with. */
-@media (hover: none) {
-  .portrait-torch { display: none; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .crt::after, .cursor, .shake { animation: none !important; }

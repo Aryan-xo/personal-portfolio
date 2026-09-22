@@ -143,9 +143,8 @@ export default function Terminal() {
         <AsciiPortrait />
         <div className="headline">
           <h1 className="glowtext">{config.identity.name}</h1>
-          <p className="accent">
-            {config.identity.title} · {config.identity.location}
-          </p>
+          <p className="accent">{config.identity.headline}</p>
+          <p className="accent">{config.identity.location}</p>
           <p className="dim">{config.identity.tagline}</p>
           <p className="hint">
             Type <span className="accent">help</span> and press Enter.

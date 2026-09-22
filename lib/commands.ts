@@ -125,7 +125,8 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       return {
         lines: [
           A(c.identity.name),
-          P(`${c.identity.title} · ${c.identity.location}`),
+          P(c.identity.headline),
+          P(c.identity.location),
           D(c.identity.tagline),
         ],
       };
@@ -174,6 +175,8 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       return {
         lines: [
           rule("skills"),
+          P(`  ${pad("Top", 15)}${c.topSkills.join(" · ")}`),
+          P(),
           ...Object.entries(c.skills).flatMap(([k, v]) => {
             const items = (v as readonly string[]).join(" · ");
             const [first, ...rest] = wrap(items, 2 + 15, 2 + 15);
@@ -251,7 +254,7 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
             A(l.role),
             P(`  ${l.org}`),
             D(`  ${l.period}`),
-            ...wrap(l.note, 2).map((x) => D(x.text)),
+            ...(l.note ? wrap(l.note, 2).map((x) => D(x.text)) : []),
             ...l.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
             P(),
           ]),
@@ -275,6 +278,7 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
         lines: [
           rule("contact"),
           P(`  ${pad("email", 11)}${c.contact.email}`),
+          P(`  ${pad("institute", 11)}${c.contact.emailAlt}`),
           P(`  ${pad("phone", 11)}${c.contact.phone}`),
           P(`  ${pad("address", 11)}${c.contact.address}`),
           P(),

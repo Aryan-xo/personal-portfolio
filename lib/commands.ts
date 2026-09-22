@@ -241,43 +241,66 @@ export function runCommand(
     case "heatmap": {
       const st = ctx.stats;
       if (st === undefined) return { lines: [D("fetching activity …")] };
-      if (!st?.contrib) {
+      const withData = st?.accounts.filter((a) => a.contrib?.total) ?? [];
+      if (!withData.length) {
         return { lines: [{ text: "contrib: no activity data available", cls: "err" }] };
       }
-      return { lines: [rule("contributions"), ...heatmap(st.contrib)] };
+      return {
+        lines: [
+          rule("contributions"),
+          ...withData.flatMap((a) => [
+            A(`  ${a.user}  ·  ${a.label}`),
+            ...heatmap(a.contrib!),
+            P(),
+          ]),
+        ],
+      };
     }
 
     case "gh":
     case "stats": {
       const st = ctx.stats;
       if (st === undefined) return { lines: [D("fetching live stats …")] };
-      if (st === null) {
-        return { lines: [{ text: "gh: could not reach the stats endpoint", cls: "err" }] };
-      }
+      if (!st) return { lines: [{ text: "gh: could not reach the stats endpoint", cls: "err" }] };
 
       const out: Line[] = [rule("live stats")];
 
-      if (st.github) {
-        const g = st.github;
-        out.push(
-          A(`  github.com/${g.user}`),
-          P(`    ${pad(String(g.repos), 6)}public repos`),
-          P(`    ${pad(String(g.stars), 6)}stars earned`),
-          P(`    ${pad(String(g.followers), 6)}followers`),
-          ...(g.updated ? [D(`    last push  ${new Date(g.updated).toISOString().slice(0, 10)}`)] : []),
-          P(),
-          D("    languages by repo count"),
-          ...bars(g.languages as [string, number][], 22, 20).map((l) => P(`  ${l.text}`)),
-          P(),
-          D("    most-starred repos"),
-          ...g.top.flatMap((r) => [
-            P(`    ${r.stars ? `★${r.stars} ` : "   "}${r.name}`),
-            ...(r.description ? wrap(r.description, 7).map((l) => D(l.text)) : []),
-          ]),
-          P()
-        );
-      } else {
-        out.push({ text: "  github: unavailable right now", cls: "err" }, P());
+      for (const a of st.accounts) {
+        out.push(A(`  github.com/${a.user}  ·  ${a.label}`));
+
+        if (a.repos !== null) {
+          out.push(
+            P(`    ${pad(String(a.repos), 6)}public repos`),
+            P(`    ${pad(String(a.stars ?? 0), 6)}stars earned`),
+            P(`    ${pad(String(a.followers ?? 0), 6)}followers`)
+          );
+        } else {
+          out.push(D("    no public repositories — the work is private"));
+        }
+
+        if (a.contrib?.total) {
+          const window = a.contrib.source === "graphql" ? "past year" : "past 90 days";
+          out.push(P(`    ${pad(String(a.contrib.total), 6)}contributions, ${window}`));
+        } else if (a.repos === null) {
+          out.push(D("    no public activity to report"));
+        }
+
+        if (a.languages.length) {
+          out.push(
+            P(),
+            D(`    languages by share of code${a.languageSource === "private" ? " (private repos, aggregate)" : ""}`),
+            ...bars(a.languages, 22, 20).map((l) => P(`  ${l.text.replace(/\s+\d+\s+(\d+)%$/, "  $1%")}`))
+          );
+        }
+
+        if (a.top.length) {
+          out.push(P(), D("    most-starred repos"));
+          for (const r of a.top) {
+            out.push(P(`    ${r.stars ? `★${r.stars} ` : "   "}${r.name}`));
+            if (r.description) out.push(...wrap(r.description, 7).map((l) => D(l.text)));
+          }
+        }
+        out.push(P());
       }
 
       if (st.leetcode) {
@@ -288,8 +311,6 @@ export function runCommand(
           ...bars(l.byLevel as [string, number][], 22, 20).map((x) => P(`  ${x.text}`)),
           ...(l.ranking ? [D(`    global rank  ${l.ranking.toLocaleString()}`)] : [])
         );
-      } else {
-        out.push({ text: "  leetcode: unavailable right now", cls: "err" });
       }
 
       out.push(P(), D("  Refreshed hourly, straight from the APIs."));

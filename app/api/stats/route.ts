@@ -4,125 +4,133 @@ import { config } from "@/lib/config";
 export const revalidate = 3600;
 
 const handle = (url: string) => url.replace(/\/+$/, "").split("/").pop() ?? "";
-const GH_USER = handle(config.contact.github);
-const LC_USER = handle(config.contact.leetcode);
 
 export type Contrib = {
   /** ISO date → count, oldest first. */
   days: [string, number][];
   total: number;
-  /** Full year via the GraphQL API, or ~90 days derived from public events. */
+  /** Full year via GraphQL, or ~90 days reconstructed from public events. */
   source: "graphql" | "events";
 };
 
-export type Stats = {
-  github: {
-    user: string;
-    repos: number;
-    followers: number;
-    stars: number;
-    languages: [string, number][];
-    top: { name: string; description: string | null; stars: number; language: string | null; url: string }[];
-    updated: string | null;
-  } | null;
-  leetcode: { user: string; total: number; byLevel: [string, number][]; ranking: number | null } | null;
+export type Repo = {
+  name: string;
+  description: string | null;
+  stars: number;
+  language: string | null;
+  url: string;
+};
+
+export type Account = {
+  user: string;
+  label: string;
+  /** Public counts; null when the account has nothing public to report. */
+  repos: number | null;
+  stars: number | null;
+  followers: number | null;
+  /** Share of code by bytes, as whole percentages. Never repo-identifying. */
+  languages: [string, number][];
+  languageSource: "public" | "private" | null;
+  /** Empty for an account whose work is private. */
+  top: Repo[];
   contrib: Contrib | null;
 };
 
-async function github(): Promise<Stats["github"]> {
-  // Unauthenticated requests are rate-limited per IP; a token lifts that on
-  // deploys where one is configured.
-  const headers: HeadersInit = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "portfolio",
-    ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
-  };
-  const opts = { headers, next: { revalidate } };
+export type Stats = {
+  accounts: Account[];
+  leetcode: { user: string; total: number; byLevel: [string, number][]; ranking: number | null } | null;
+};
 
-  const [uRes, rRes] = await Promise.all([
-    fetch(`https://api.github.com/users/${GH_USER}`, opts),
-    fetch(`https://api.github.com/users/${GH_USER}/repos?per_page=100&sort=pushed`, opts),
-  ]);
-  if (!uRes.ok || !rRes.ok) return null;
+type Cfg = { user: string; label: string; token?: string };
 
-  const u = await uRes.json();
-  const repos: Record<string, never>[] = await rRes.json();
-  const own = repos.filter((r: Record<string, unknown>) => !r.fork);
+const ACCOUNTS: Cfg[] = [
+  { user: handle(config.contact.github), label: "personal", token: process.env.GITHUB_TOKEN },
+  { user: handle(config.contact.githubWork), label: "work", token: process.env.GITHUB_WORK_TOKEN },
+];
 
-  const langs = new Map<string, number>();
-  let stars = 0;
-  for (const r of own as unknown as { language: string | null; stargazers_count: number }[]) {
-    stars += r.stargazers_count ?? 0;
-    if (r.language) langs.set(r.language, (langs.get(r.language) ?? 0) + 1);
+const headers = (token?: string): HeadersInit => ({
+  Accept: "application/vnd.github+json",
+  "User-Agent": "portfolio",
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+});
+
+/** Run promises a few at a time, so a hundred repos don't open a hundred sockets. */
+async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(...(await Promise.all(items.slice(i, i + size).map(fn))));
   }
-
-  const top = (own as unknown as {
-    name: string; description: string | null; stargazers_count: number;
-    language: string | null; html_url: string; pushed_at: string;
-  }[])
-    .sort((a, b) => b.stargazers_count - a.stargazers_count || b.pushed_at.localeCompare(a.pushed_at))
-    .slice(0, 6)
-    .map((r) => ({
-      name: r.name,
-      description: r.description,
-      stars: r.stargazers_count,
-      language: r.language,
-      url: r.html_url,
-    }));
-
-  const updated = (own as unknown as { pushed_at: string }[])
-    .map((r) => r.pushed_at)
-    .sort()
-    .at(-1) ?? null;
-
-  return {
-    user: GH_USER,
-    repos: own.length,
-    followers: u.followers ?? 0,
-    stars,
-    languages: [...langs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8),
-    top,
-    updated,
-  };
+  return out;
 }
 
-async function leetcode(): Promise<Stats["leetcode"]> {
-  const query = `query($u: String!) {
-    matchedUser(username: $u) {
-      profile { ranking }
-      submitStatsGlobal { acSubmissionNum { difficulty count } }
+const asPercent = (bytes: Map<string, number>, take = 8): [string, number][] => {
+  const total = [...bytes.values()].reduce((a, b) => a + b, 0);
+  if (!total) return [];
+  return [...bytes.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, take)
+    .map(([name, n]) => [name, Math.round((n / total) * 100)] as [string, number])
+    .filter(([, pct]) => pct > 0);
+};
+
+/**
+ * Language mix for an account whose repositories are private. Only the summed
+ * byte counts leave this function — never a repository name, description or
+ * URL — so the published figures say what the work is written in and nothing
+ * about what the work is.
+ */
+async function privateLanguages(token: string): Promise<[string, number][]> {
+  const res = await fetch(
+    "https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member",
+    { headers: headers(token), next: { revalidate } }
+  );
+  if (!res.ok) return [];
+
+  const repos: { languages_url: string; fork: boolean }[] = await res.json();
+  const bytes = new Map<string, number>();
+
+  await pool(repos.filter((r) => !r.fork), 8, async (r) => {
+    const lr = await fetch(r.languages_url, { headers: headers(token), next: { revalidate } });
+    if (!lr.ok) return;
+    const langs: Record<string, number> = await lr.json();
+    for (const [name, n] of Object.entries(langs)) {
+      bytes.set(name, (bytes.get(name) ?? 0) + n);
     }
-  }`;
-  const res = await fetch("https://leetcode.com/graphql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
-    body: JSON.stringify({ query, variables: { u: LC_USER } }),
+  });
+
+  return asPercent(bytes);
+}
+
+/** Language mix from an account's public repositories. */
+async function publicLanguages(user: string, token?: string): Promise<[string, number][]> {
+  const res = await fetch(`https://api.github.com/users/${user}/repos?per_page=100&sort=pushed`, {
+    headers: headers(token),
     next: { revalidate },
   });
-  if (!res.ok) return null;
+  if (!res.ok) return [];
 
-  const json = await res.json();
-  const m = json?.data?.matchedUser;
-  if (!m) return null;
+  const repos: { languages_url: string; fork: boolean }[] = await res.json();
+  const bytes = new Map<string, number>();
 
-  const nums: { difficulty: string; count: number }[] = m.submitStatsGlobal?.acSubmissionNum ?? [];
-  const all = nums.find((n) => n.difficulty === "All")?.count ?? 0;
-  return {
-    user: LC_USER,
-    total: all,
-    byLevel: nums.filter((n) => n.difficulty !== "All").map((n) => [n.difficulty, n.count]),
-    ranking: m.profile?.ranking ?? null,
-  };
+  await pool(repos.filter((r) => !r.fork), 8, async (r) => {
+    const lr = await fetch(r.languages_url, { headers: headers(token), next: { revalidate } });
+    if (!lr.ok) return;
+    const langs: Record<string, number> = await lr.json();
+    for (const [name, n] of Object.entries(langs)) {
+      bytes.set(name, (bytes.get(name) ?? 0) + n);
+    }
+  });
+
+  return asPercent(bytes);
 }
 
 /**
- * The contribution calendar is GraphQL-only and needs a token. Without one we
- * reconstruct what we can from public events, which reach back about 90 days —
- * the response says which, so the UI can label it honestly.
+ * The contribution calendar is GraphQL-only and needs a token. With one, it
+ * covers a full year and includes private contributions when the account has
+ * opted into showing them — as daily counts, which name nothing. Without a
+ * token we reconstruct roughly ninety days from public events instead.
  */
-async function contributions(): Promise<Contrib | null> {
-  const token = process.env.GITHUB_TOKEN;
-
+async function contributions(user: string, token?: string): Promise<Contrib | null> {
   if (token) {
     const query = `query($u: String!) {
       user(login: $u) {
@@ -137,7 +145,7 @@ async function contributions(): Promise<Contrib | null> {
     const res = await fetch("https://api.github.com/graphql", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables: { u: GH_USER } }),
+      body: JSON.stringify({ query, variables: { u: user } }),
       next: { revalidate },
     });
     if (res.ok) {
@@ -153,8 +161,8 @@ async function contributions(): Promise<Contrib | null> {
     }
   }
 
-  const res = await fetch(`https://api.github.com/users/${GH_USER}/events/public?per_page=100`, {
-    headers: { Accept: "application/vnd.github+json", "User-Agent": "portfolio" },
+  const res = await fetch(`https://api.github.com/users/${user}/events/public?per_page=100`, {
+    headers: headers(token),
     next: { revalidate },
   });
   if (!res.ok) return null;
@@ -163,11 +171,9 @@ async function contributions(): Promise<Contrib | null> {
   const counts = new Map<string, number>();
   for (const e of events) {
     const day = e.created_at.slice(0, 10);
-    const n = e.type === "PushEvent" ? e.payload?.size ?? 1 : 1;
-    counts.set(day, (counts.get(day) ?? 0) + n);
+    counts.set(day, (counts.get(day) ?? 0) + (e.type === "PushEvent" ? e.payload?.size ?? 1 : 1));
   }
 
-  // Fill every day in the window, so the grid has no gaps.
   const days: [string, number][] = [];
   const end = new Date();
   const start = new Date(end);
@@ -179,13 +185,104 @@ async function contributions(): Promise<Contrib | null> {
   return { days, total: [...counts.values()].reduce((a, b) => a + b, 0), source: "events" };
 }
 
+async function account({ user, label, token }: Cfg): Promise<Account> {
+  const base: Account = {
+    user,
+    label,
+    repos: null,
+    stars: null,
+    followers: null,
+    languages: [],
+    languageSource: null,
+    top: [],
+    contrib: null,
+  };
+
+  const [uRes, rRes, contrib] = await Promise.all([
+    fetch(`https://api.github.com/users/${user}`, { headers: headers(token), next: { revalidate } }),
+    fetch(`https://api.github.com/users/${user}/repos?per_page=100&sort=pushed`, {
+      headers: headers(token),
+      next: { revalidate },
+    }),
+    contributions(user, token),
+  ]);
+
+  base.contrib = contrib;
+
+  if (uRes.ok) {
+    const u = await uRes.json();
+    base.followers = u.followers ?? 0;
+  }
+
+  const publicRepos: {
+    name: string; description: string | null; stargazers_count: number;
+    language: string | null; html_url: string; pushed_at: string; fork: boolean;
+  }[] = rRes.ok ? await rRes.json() : [];
+  const own = publicRepos.filter((r) => !r.fork);
+
+  if (own.length) {
+    base.repos = own.length;
+    base.stars = own.reduce((a, r) => a + (r.stargazers_count ?? 0), 0);
+    base.top = own
+      .sort((a, b) => b.stargazers_count - a.stargazers_count || b.pushed_at.localeCompare(a.pushed_at))
+      .slice(0, 6)
+      .map((r) => ({
+        name: r.name,
+        description: r.description,
+        stars: r.stargazers_count,
+        language: r.language,
+        url: r.html_url,
+      }));
+    base.languages = await publicLanguages(user, token);
+    base.languageSource = base.languages.length ? "public" : null;
+  } else if (token) {
+    // Nothing public, but the token can see the private side. Percentages only.
+    base.languages = await privateLanguages(token);
+    base.languageSource = base.languages.length ? "private" : null;
+  }
+
+  return base;
+}
+
+async function leetcode(): Promise<Stats["leetcode"]> {
+  const user = handle(config.contact.leetcode);
+  const query = `query($u: String!) {
+    matchedUser(username: $u) {
+      profile { ranking }
+      submitStatsGlobal { acSubmissionNum { difficulty count } }
+    }
+  }`;
+  const res = await fetch("https://leetcode.com/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
+    body: JSON.stringify({ query, variables: { u: user } }),
+    next: { revalidate },
+  });
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  const m = json?.data?.matchedUser;
+  if (!m) return null;
+
+  const nums: { difficulty: string; count: number }[] = m.submitStatsGlobal?.acSubmissionNum ?? [];
+  return {
+    user,
+    total: nums.find((n) => n.difficulty === "All")?.count ?? 0,
+    byLevel: nums.filter((n) => n.difficulty !== "All").map((n) => [n.difficulty, n.count]),
+    ranking: m.profile?.ranking ?? null,
+  };
+}
+
 export async function GET() {
-  // One failing provider shouldn't take the other down with it.
-  const [gh, lc, cn] = await Promise.allSettled([github(), leetcode(), contributions()]);
+  // One failing source shouldn't take the others down with it.
+  const [accounts, lc] = await Promise.all([
+    Promise.all(ACCOUNTS.map((a) => account(a).catch(() => null))),
+    leetcode().catch(() => null),
+  ]);
+
   const body: Stats = {
-    github: gh.status === "fulfilled" ? gh.value : null,
-    leetcode: lc.status === "fulfilled" ? lc.value : null,
-    contrib: cn.status === "fulfilled" ? cn.value : null,
+    accounts: accounts.filter((a): a is Account => a !== null),
+    leetcode: lc,
   };
   return NextResponse.json(body, {
     headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },

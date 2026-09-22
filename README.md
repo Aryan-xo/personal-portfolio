@@ -31,11 +31,22 @@ Tunables sit in `OPTS` at the top of `scripts/img2ascii.mjs`:
 
 ## Live data
 
-`app/api/stats/route.ts` pulls public GitHub and LeetCode figures — repo and
-star counts, a language breakdown, the most-starred repos, problems solved by
-difficulty — and the `gh` command renders them. The response is cached for an
-hour and each provider is fetched independently, so one being down doesn't take
-the other with it. Set `GITHUB_TOKEN` to lift the unauthenticated rate limit.
+`app/api/stats/route.ts` reports both GitHub accounts and LeetCode. The `gh`
+command renders the figures, `contrib` draws the calendars, and the sidebar
+shows a language donut and contribution grid per account. The response is
+cached for an hour and each source is fetched independently, so one being down
+doesn't take the others with it.
+
+Tokens are optional; see `.env.example`. Without them the route falls back to
+public data, which for an account with no public repositories is nothing at
+all — that account is then simply omitted from the charts.
+
+**On the work account.** Its repositories are private, so the route reads the
+language split from the private side and returns *only the aggregate
+percentages*. Repository names, descriptions and URLs are never included in the
+response for such an account, and the contribution calendar is daily counts
+alone. The published page can therefore say what the work is written in and how
+much of it there is, without saying anything about what the work is.
 
 ## Graphics
 

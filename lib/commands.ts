@@ -26,7 +26,7 @@ function rule(label = "") {
   return D(label ? `── ${label} ${"─".repeat(Math.max(0, 56 - label.length))}` : "─".repeat(60));
 }
 
-const WRAP = 88;
+const WRAP = 96;
 
 /** Greedy word wrap, with every line after the first indented to `hang`. */
 function wrap(text: string, indent = 2, hang = indent): Line[] {

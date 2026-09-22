@@ -108,11 +108,13 @@ html.light .crt::after { display: none; }
 
 /* ── Terminal ───────────────────────────────────────────── */
 /* Terminal on the left, search and contents on the right. */
+/* The terminal takes only the width its text actually wraps to; the sidebar
+   absorbs everything left over, up to a width where a donut still reads. */
 .shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 372px;
-  gap: 2.2rem;
-  max-width: 1560px;
+  grid-template-columns: minmax(0, 104ch) minmax(340px, 1fr);
+  gap: 2rem;
+  max-width: 1780px;
   margin: 0 auto;
   height: 100dvh;
 }
@@ -123,7 +125,7 @@ html.light .crt::after { display: none; }
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 3vh 1.5rem 0 4vw;
+  padding: 3vh 1.25rem 0 2.5rem;
   min-width: 0;
   cursor: text;
   overflow: hidden;
@@ -328,13 +330,16 @@ html.light .crt::after { display: none; }
 .sidebar {
   height: 100dvh;
   /* A viewport-relative right padding was eating a third of the column. */
-  padding: 3vh 1.5rem 1.25rem 1.5rem;
+  padding: 3vh 1.25rem 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
   min-width: 0;
   font-size: .86em;
   border-left: 1px solid color-mix(in srgb, var(--dim) 26%, transparent);
+  /* Lets the panel lay itself out from its own width rather than the page's. */
+  container-type: inline-size;
+  container-name: side;
 }
 
 .side-search {
@@ -491,7 +496,7 @@ html.light .crt::after { display: none; }
 .side-card {
   border: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
   border-radius: 4px;
-  padding: .85rem .9rem 1rem;
+  padding: .85rem .85rem 1rem;
   margin-bottom: .9rem;
   background: color-mix(in srgb, var(--fg) 3%, transparent);
 }
@@ -527,7 +532,12 @@ html.light .crt::after { display: none; }
   gap: 1rem;
   color: var(--fg);
 }
-.chart-ring { width: 82px; height: 82px; flex-shrink: 0; }
+.chart-ring {
+  width: clamp(82px, 24%, 118px);
+  aspect-ratio: 1;
+  height: auto;
+  flex-shrink: 0;
+}
 
 .chart-legend {
   list-style: none;
@@ -618,3 +628,29 @@ html.light .crt::after { display: none; }
   border-radius: 3px;
 }
 .chart-bars .chart-pct { min-width: 2.4em; text-align: right; }
+
+
+/* ── Sidebar at width ───────────────────────────────────────
+   Past ~440px a single column of label-then-number stretches into two lonely
+   edges, so the lists split and the legend stops chasing the far margin. */
+@container side (min-width: 440px) {
+  .side-toc {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.4rem;
+  }
+  .side-stats { grid-template-columns: repeat(4, 1fr); }
+  .side-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.4rem;
+  }
+  .chart-legend { max-width: 320px; }
+  .chart-bars li { max-width: 420px; }
+  .side-card { padding: 1rem 1.1rem 1.15rem; }
+}
+
+@container side (min-width: 620px) {
+  .side-toc { grid-template-columns: repeat(3, 1fr); }
+  .chart-donut { gap: 1.6rem; }
+}

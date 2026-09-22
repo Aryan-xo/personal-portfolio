@@ -28,9 +28,9 @@ export const config = {
     email: "aryankr.iitb@gmail.com",
     phone: "+91 88097 58416",
     address: "Bangalore, Karnataka, India",
-    // TODO: replace with your actual handles
-    github: "https://github.com/aryankumar",
-    linkedin: "https://linkedin.com/in/aryankumar",
+    github: "https://github.com/Aryan-xo",
+    linkedin: "https://www.linkedin.com/in/aryankriitb/",
+    leetcode: "https://leetcode.com/u/aryan_x0/",
     twitter: "",
     website: "",
   },

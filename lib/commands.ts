@@ -54,7 +54,7 @@ export const commandList = [
   ["achievements", "wins worth listing"],
   ["education", "where I studied"],
   ["contact", "email, phone, address"],
-  ["social", "github, linkedin, x"],
+  ["social", "github, linkedin, leetcode"],
   ["resume", "download the PDF"],
   ["neofetch", "system info, portfolio edition"],
   ["theme", "switch colour scheme"],
@@ -64,7 +64,7 @@ export const commandList = [
 
 export const commandNames = [
   ...commandList.map((c) => c[0]),
-  "github", "linkedin", "email", "ls", "cat", "pwd", "date", "echo",
+  "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man",
 ];
 
@@ -191,10 +191,11 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
           rule("social"),
           P(`  ${pad("github", 11)}${c.contact.github}`),
           P(`  ${pad("linkedin", 11)}${c.contact.linkedin}`),
+          P(`  ${pad("leetcode", 11)}${c.contact.leetcode}`),
           ...(c.contact.twitter ? [P(`  ${pad("x", 11)}${c.contact.twitter}`)] : []),
           ...(c.contact.website ? [P(`  ${pad("web", 11)}${c.contact.website}`)] : []),
           P(),
-          D("  Type `github` or `linkedin` to open in a new tab."),
+          D("  Type `github`, `linkedin` or `leetcode` to open in a new tab."),
         ],
       };
 
@@ -202,6 +203,8 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
       return { lines: [D(`opening ${c.contact.github} …`)], open: c.contact.github };
     case "linkedin":
       return { lines: [D(`opening ${c.contact.linkedin} …`)], open: c.contact.linkedin };
+    case "leetcode":
+      return { lines: [D(`opening ${c.contact.leetcode} …`)], open: c.contact.leetcode };
     case "email":
       return { lines: [D(`composing to ${c.contact.email} …`)], open: `mailto:${c.contact.email}` };
     case "resume":

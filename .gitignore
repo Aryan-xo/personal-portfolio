@@ -42,3 +42,7 @@ next-env.d.ts
 
 # ASCII pipeline artifacts
 cutout.png
+
+# Scratch folder of source material (the directory name ends in a space,
+# which gitignore only honours when escaped)
+my details\ /

@@ -35,6 +35,7 @@ export default function Terminal() {
   const [matrix, setMatrix] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
 
   // Inline suggestion: the remainder of the single best completion, shown as
@@ -78,13 +79,28 @@ export default function Terminal() {
     } catch {}
   }, [crt]);
 
-  const follow = useCallback(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+  /**
+   * Keep the newest output in view. Sticks to the bottom only when the reader
+   * is already there, so scrolling up to re-read something isn't yanked back
+   * by the next streamed word.
+   */
+  const follow = useCallback((force = false) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (!force && distance >= 140) return;
+    // Decide against the current scroll position, but scroll after the next
+    // paint — when output is skipped to the end, the taller content has not
+    // been laid out yet at the moment this is called.
+    requestAnimationFrame(() => {
+      const e = scrollRef.current;
+      if (e) e.scrollTop = e.scrollHeight;
+    });
   }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [blocks]);
+    follow(true);
+  }, [blocks, follow]);
 
   const submit = useCallback(
     (raw: string) => {
@@ -114,6 +130,7 @@ export default function Terminal() {
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    follow(true);
     if (e.key === "Enter") {
       submit(input);
     } else if (e.key === "ArrowUp") {
@@ -155,27 +172,30 @@ export default function Terminal() {
     }
   };
 
-  const focus = () => inputRef.current?.focus();
+  const focus = () => {
+    inputRef.current?.focus();
+  };
 
   return (
     <div className={`term ${shake ? "shake" : ""}`} onClick={focus}>
       {matrix && <MatrixRain onDone={() => setMatrix(false)} />}
 
-      <header className="header">
-        <AsciiPortrait />
-        <div className="headline">
-          <h1 className="glowtext">{config.identity.name}</h1>
-          <p className="accent">{config.identity.headline}</p>
-          <p className="accent">{config.identity.location}</p>
-          <p className="dim">{config.identity.tagline}</p>
-          <p className="hint">
-            Type <span className="accent">help</span> and press Enter.
-            {" "}Hard to read? <span className="accent">crt off</span>.
-          </p>
-        </div>
-      </header>
+      {/* Everything that scrolls lives here; the prompt below stays pinned. */}
+      <div className="scroll" ref={scrollRef}>
+        <header className="header">
+          <AsciiPortrait />
+          <div className="headline">
+            <h1 className="glowtext">{config.identity.name}</h1>
+            <p className="accent">{config.identity.headline}</p>
+            <p className="accent">{config.identity.location}</p>
+            <p className="dim">{config.identity.tagline}</p>
+            <p className="hint">
+              Type <span className="accent">help</span> and press Enter.
+              {" "}Hard to read? <span className="accent">crt off</span>.
+            </p>
+          </div>
+        </header>
 
-      <div className="scroll">
         {blocks.map((b, i) => (
           <div key={b.id} className="block">
             {b.prompt !== undefined && (
@@ -188,30 +208,36 @@ export default function Terminal() {
             <StreamedLines
               lines={b.lines}
               stream={i === blocks.length - 1}
-              onProgress={follow}
-              onDone={follow}
+              // Soft while streaming, so scrolling up mid-flow isn't fought;
+              // forced on completion, so finished output always lands at the
+              // prompt.
+              onProgress={() => follow()}
+              onDone={() => follow(true)}
             />
           </div>
         ))}
-
-        <div className="inputrow">
-          <Prompt />
-          <span className="typed">{input}</span>
-          <span className="cursor" />
-          {ghost && <span className="ghost">{ghost}</span>}
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKey}
-            autoFocus
-            spellCheck={false}
-            autoComplete="off"
-            autoCapitalize="off"
-            aria-label="terminal input"
-          />
-        </div>
         <div ref={endRef} />
+      </div>
+
+      <div className="inputrow">
+        <Prompt />
+        <span className="typed">{input}</span>
+        <span className="cursor" />
+        {ghost && <span className="ghost">{ghost}</span>}
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            follow(true);
+          }}
+          onKeyDown={onKey}
+          autoFocus
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          aria-label="terminal input"
+        />
       </div>
 
       <nav className="chips" aria-label="quick commands">

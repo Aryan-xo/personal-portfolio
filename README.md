@@ -42,6 +42,12 @@ Unlisted: `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`, `date`, `echo`,
 Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
 an ambiguous prefix prints all matches.
 
+The terminal fills the viewport: the header and output scroll inside their own
+region while the prompt stays pinned above the quick-command chips, so typing
+never requires chasing the input down the page. Scrolling up to re-read
+something is respected during a stream, but finished output always lands back
+at the prompt.
+
 Output streams in a word at a time, the way a model's response lands. Any key
 or click jumps to the end, and readers whose OS asks for reduced motion get the
 whole block at once. `components/StreamedLines.tsx` holds the pacing: long

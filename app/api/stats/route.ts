@@ -63,7 +63,16 @@ async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): P
   return out;
 }
 
+/**
+ * Languages that are usually build output, vendored assets or generated
+ * reports rather than anything anyone wrote. GitHub counts them by byte like
+ * everything else, which lets a coverage report outweigh a service. Remove an
+ * entry here if you do author it by hand.
+ */
+const GENERATED = new Set(["HTML", "CSS", "SCSS", "Less", "Sass", "Stylus"]);
+
 const asPercent = (bytes: Map<string, number>, take = 8): [string, number][] => {
+  for (const name of GENERATED) bytes.delete(name);
   const total = [...bytes.values()].reduce((a, b) => a + b, 0);
   if (!total) return [];
   return [...bytes.entries()]

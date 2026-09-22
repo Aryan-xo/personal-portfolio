@@ -46,7 +46,12 @@ const personSchema = {
   address: { "@type": "PostalAddress", addressLocality: "Bengaluru", addressCountry: "IN" },
   alumniOf: config.education.map((e) => ({ "@type": "CollegeOrUniversity", name: e.school })),
   worksFor: { "@type": "Organization", name: config.experience[0].company },
-  sameAs: [config.contact.github, config.contact.linkedin, config.contact.leetcode],
+  sameAs: [
+    config.contact.github,
+    config.contact.githubWork,
+    config.contact.linkedin,
+    config.contact.leetcode,
+  ],
   knowsAbout: Object.values(config.skills).flat().slice(0, 30),
 };
 

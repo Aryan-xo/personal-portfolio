@@ -7,6 +7,7 @@ import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
 import Sidebar from "./Sidebar";
+import Screensaver from "./Screensaver";
 import type { Stats } from "@/app/api/stats/route";
 
 type Block = { id: number; prompt?: string; lines: Line[] };
@@ -39,6 +40,7 @@ export default function Terminal() {
   const [stats, setStats] = useState<Stats | null | undefined>(undefined);
   const [crt, setCrt] = useState(true);
   const [matrix, setMatrix] = useState(false);
+  const [idle, setIdle] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -205,6 +207,27 @@ export default function Terminal() {
     inputRef.current?.focus();
   };
 
+  // Drift into the screensaver after a couple of minutes untouched.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const reset = () => {
+      setIdle(false);
+      clearTimeout(timer);
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+      timer = setTimeout(() => setIdle(true), 120_000);
+    };
+    reset();
+    for (const ev of ["keydown", "pointerdown", "pointermove", "wheel"]) {
+      window.addEventListener(ev, reset, { passive: true });
+    }
+    return () => {
+      clearTimeout(timer);
+      for (const ev of ["keydown", "pointerdown", "pointermove", "wheel"]) {
+        window.removeEventListener(ev, reset);
+      }
+    };
+  }, []);
+
   // Warm the live stats so `gh` answers instantly. The response is cached for
   // an hour, so this costs nothing on repeat visits.
   useEffect(() => {
@@ -246,6 +269,7 @@ export default function Terminal() {
     <div className="shell">
     <div className={`term ${shake ? "shake" : ""}`} onClick={focus}>
       {matrix && <MatrixRain onDone={() => setMatrix(false)} />}
+      {idle && <Screensaver onWake={() => setIdle(false)} />}
 
       {/* Everything that scrolls lives here; the prompt below stays pinned. */}
       <div className="scroll" ref={scrollRef}>
@@ -317,6 +341,7 @@ export default function Terminal() {
     </div>
 
     <Sidebar
+      stats={stats}
       onRun={(cmd) => {
         submit(cmd);
         focus();

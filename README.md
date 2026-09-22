@@ -37,6 +37,22 @@ difficulty — and the `gh` command renders them. The response is cached for an
 hour and each provider is fetched independently, so one being down doesn't take
 the other with it. Set `GITHUB_TOKEN` to lift the unauthenticated rate limit.
 
+## Graphics
+
+Four visual layers, all built from the same data the text commands use:
+
+- `contrib` draws the GitHub contribution grid in block characters. The
+  calendar is GraphQL-only, so without `GITHUB_TOKEN` it falls back to roughly
+  90 days reconstructed from public events and says so on screen.
+- The portrait carries a cursor torch — a second copy at full brightness,
+  clipped to a disc that follows the pointer. It is done with a CSS mask rather
+  than per-character state because the portrait is ~4,500 spans.
+- The sidebar renders a language donut, LeetCode difficulty bars and an
+  activity sparkline as inline SVG, in the theme's own colour.
+- After two minutes untouched the portrait dissolves into a drifting-character
+  screensaver that gathers and scatters on a slow cycle. Any input wakes it,
+  and it never starts for readers who ask for reduced motion.
+
 ## Sharing
 
 Running a content command writes it to the URL, so `?c=projects` opens straight

@@ -40,6 +40,7 @@ export const config = {
     // City only, on purpose — the full home address stays off a public page.
     address: "Bengaluru, Karnataka, India",
     github: "https://github.com/Aryan-xo",
+    githubWork: "https://github.com/aryankumar-loop",
     linkedin: "https://www.linkedin.com/in/aryankriitb/",
     leetcode: "https://leetcode.com/u/aryan_x0/",
     twitter: "",

@@ -2,6 +2,8 @@
 import { useMemo, useState } from "react";
 import { config } from "@/lib/config";
 import { index, search, highlight } from "@/lib/search";
+import SideCharts from "./SideCharts";
+import type { Stats } from "@/app/api/stats/route";
 
 /** Counts per section, for the idle contents list. */
 const SECTIONS = (() => {
@@ -31,7 +33,13 @@ function Marked({ text, query }: { text: string; query: string }) {
   );
 }
 
-export default function Sidebar({ onRun }: { onRun: (cmd: string) => void }) {
+export default function Sidebar({
+  onRun,
+  stats,
+}: {
+  onRun: (cmd: string) => void;
+  stats: Stats | null | undefined;
+}) {
   const [q, setQ] = useState("");
   const hits = useMemo(() => search(q), [q]);
   const searching = q.trim().length > 0;
@@ -107,9 +115,12 @@ export default function Sidebar({ onRun }: { onRun: (cmd: string) => void }) {
             ))}
           </dl>
 
+          <SideCharts stats={stats} />
+
           <p className="side-label dim">elsewhere</p>
           <ul className="side-links">
             <li><a href={config.contact.github} target="_blank" rel="noopener noreferrer">github</a></li>
+            <li><a href={config.contact.githubWork} target="_blank" rel="noopener noreferrer">github · work</a></li>
             <li><a href={config.contact.linkedin} target="_blank" rel="noopener noreferrer">linkedin</a></li>
             <li><a href={config.contact.leetcode} target="_blank" rel="noopener noreferrer">leetcode</a></li>
             <li><a href={config.resumeUrl} target="_blank" rel="noopener noreferrer">resume.pdf</a></li>

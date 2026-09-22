@@ -4,6 +4,7 @@ import { portraitSmall } from "./portrait";
 import { search } from "./search";
 import { timeline } from "./timeline";
 import type { Stats } from "@/app/api/stats/route";
+import { heatmap, bars } from "./heatmap";
 
 export type Line = { text: string; cls?: string };
 export type CmdResult = {
@@ -59,6 +60,7 @@ export const commandList = [
   ["research", "lab work in Japan"],
   ["timeline", "the whole thing as a chart"],
   ["gh", "live GitHub and LeetCode stats"],
+  ["contrib", "commit activity as a heatmap"],
   ["projects", "things I've built"],
   ["finance", "quant and valuation work"],
   ["skills", "what I work with"],
@@ -82,7 +84,7 @@ export const commandNames = [
   ...commandList.map((c) => c[0]),
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
-  "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats",
+  "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats", "heatmap",
 ];
 
 /**
@@ -235,6 +237,16 @@ export function runCommand(
         ],
       };
 
+    case "contrib":
+    case "heatmap": {
+      const st = ctx.stats;
+      if (st === undefined) return { lines: [D("fetching activity …")] };
+      if (!st?.contrib) {
+        return { lines: [{ text: "contrib: no activity data available", cls: "err" }] };
+      }
+      return { lines: [rule("contributions"), ...heatmap(st.contrib)] };
+    }
+
     case "gh":
     case "stats": {
       const st = ctx.stats;
@@ -247,8 +259,6 @@ export function runCommand(
 
       if (st.github) {
         const g = st.github;
-        const bar = (n: number, max: number) => "█".repeat(Math.max(1, Math.round((n / max) * 18)));
-        const maxLang = Math.max(...g.languages.map(([, n]) => n), 1);
         out.push(
           A(`  github.com/${g.user}`),
           P(`    ${pad(String(g.repos), 6)}public repos`),
@@ -257,7 +267,7 @@ export function runCommand(
           ...(g.updated ? [D(`    last push  ${new Date(g.updated).toISOString().slice(0, 10)}`)] : []),
           P(),
           D("    languages by repo count"),
-          ...g.languages.map(([name, n]) => P(`    ${pad(name, 20)}${bar(n, maxLang)} ${n}`)),
+          ...bars(g.languages as [string, number][], 22, 20).map((l) => P(`  ${l.text}`)),
           P(),
           D("    most-starred repos"),
           ...g.top.flatMap((r) => [
@@ -275,7 +285,7 @@ export function runCommand(
         out.push(
           A(`  leetcode.com/u/${l.user}`),
           P(`    ${pad(String(l.total), 6)}problems solved`),
-          ...l.byLevel.map(([d, n]) => P(`    ${pad(d, 20)}${n}`)),
+          ...bars(l.byLevel as [string, number][], 22, 20).map((x) => P(`  ${x.text}`)),
           ...(l.ranking ? [D(`    global rank  ${l.ranking.toLocaleString()}`)] : [])
         );
       } else {
@@ -370,6 +380,7 @@ export function runCommand(
         lines: [
           rule("social"),
           P(`  ${pad("github", 11)}${c.contact.github}`),
+          P(`  ${pad("github/work", 11)}${c.contact.githubWork}`),
           P(`  ${pad("linkedin", 11)}${c.contact.linkedin}`),
           P(`  ${pad("leetcode", 11)}${c.contact.leetcode}`),
           ...(c.contact.twitter ? [P(`  ${pad("x", 11)}${c.contact.twitter}`)] : []),

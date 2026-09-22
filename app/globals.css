@@ -139,6 +139,39 @@ html.light .crt::after { display: none; }
   margin-bottom: 1.4rem;
 }
 
+.portrait-wrap {
+  position: relative;
+  flex-shrink: 0;
+  --mx: -999px;
+  --my: -999px;
+  --torch: 0;
+}
+
+/* The bright copy is clipped to a disc around the pointer, so moving across
+   the portrait lights it up without touching a single character's state. */
+.portrait-torch {
+  position: absolute;
+  inset: 0;
+  color: var(--accent);
+  opacity: calc(var(--torch) * 1);
+  transition: opacity 260ms ease;
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(var(--glow), .7);
+  -webkit-mask-image: radial-gradient(
+    circle 74px at var(--mx) var(--my),
+    #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle 74px at var(--mx) var(--my),
+    #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%
+  );
+}
+.portrait-torch span { opacity: 1 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .portrait-torch { display: none; }
+}
+
 .portrait {
   margin: 0;
   font-size: clamp(3.4px, 0.62vw, 6.2px);
@@ -146,7 +179,6 @@ html.light .crt::after { display: none; }
   letter-spacing: 0;
   white-space: pre;
   color: var(--fg);
-  flex-shrink: 0;
 }
 .portrait-row { display: block; }
 
@@ -451,3 +483,92 @@ html.light .crt::after { display: none; }
   .sidebar { display: none; }
   .term { padding: 3vh 4vw 0; max-width: 1080px; margin: 0 auto; }
 }
+
+
+/* ── Sidebar charts ─────────────────────────────────────── */
+.side-note { margin: 0; font-size: .9em; }
+
+.chart-donut {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  color: var(--fg);
+}
+.chart-donut svg { flex-shrink: 0; }
+
+.chart-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .86em;
+  line-height: 1.7;
+}
+.chart-swatch {
+  width: .7em;
+  height: .7em;
+  flex-shrink: 0;
+  background: currentColor;
+  border-radius: 1px;
+}
+.chart-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-bars { list-style: none; margin: 0; padding: 0; color: var(--fg); }
+.chart-bars li {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .86em;
+  line-height: 2;
+}
+.chart-bars .chart-name { flex: 0 0 4.5em; }
+.chart-track {
+  flex: 1;
+  height: .55em;
+  background: color-mix(in srgb, var(--dim) 30%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.chart-fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.chart-spark {
+  width: 100%;
+  height: 34px;
+  color: var(--fg);
+  display: block;
+}
+
+
+/* ── Screensaver ────────────────────────────────────────── */
+.saver {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: var(--bg);
+  cursor: pointer;
+  animation: saver-in 900ms ease both;
+}
+.saver canvas { display: block; }
+.saver-hint {
+  position: absolute;
+  bottom: 4vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: .82em;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes saver-in { from { opacity: 0; } to { opacity: 1; } }

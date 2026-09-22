@@ -163,8 +163,14 @@ whole block at once. `components/StreamedLines.tsx` holds the pacing: long
 output takes bigger bites so a block finishes in roughly 1.8s regardless of
 length, and punctuation draws a short breath.
 
-Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. `paper` is
-a light theme and skips the CRT overlays.
+Themes: six swatches sit under the header, each painted in the colours it
+selects, alongside a switch for the CRT overlays. `theme <name>` and `crt on` /
+`crt off` do the same from the prompt. `paper` is a light theme and skips the
+overlays automatically.
+
+Both preferences are written when they change rather than from an effect
+watching the value — an effect keyed on state runs once with the default before
+the stored value has been read, which saves the default over the preference.
 
 `crt off` turns off the scanlines, vignette and phosphor glow when they get in
 the way of reading; `crt on` brings them back. Both the theme and the CRT state

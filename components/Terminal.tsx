@@ -10,6 +10,7 @@ import StreamedLines from "./StreamedLines";
 import Sidebar from "./Sidebar";
 import Screensaver from "./Screensaver";
 import Resizer from "./Resizer";
+import ThemePicker from "./ThemePicker";
 import type { Stats } from "@/app/api/stats/route";
 
 /**
@@ -63,7 +64,36 @@ export default function Terminal() {
       : "";
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Apply theme as CSS variables.
+  /*
+   * Preferences are written when the reader changes one, never from an effect
+   * that watches the value. An effect keyed on state runs once with the
+   * default before the stored value has been read, and in development React
+   * invokes it twice — so the default gets saved over the stored preference
+   * between the two restores, and the choice is lost on every reload.
+   */
+  const chooseTheme = useCallback((name: string) => {
+    setTheme(name);
+    try {
+      localStorage.setItem("theme", name);
+    } catch {}
+  }, []);
+
+  const chooseCrt = useCallback((on: boolean) => {
+    setCrt(on);
+    try {
+      localStorage.setItem("crt", on ? "on" : "off");
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved && themes.some((t) => t.name === saved)) setTheme(saved);
+      setCrt(localStorage.getItem("crt") !== "off");
+    } catch {}
+  }, []);
+
+  // Apply the theme as CSS variables.
   useEffect(() => {
     const t = themes.find((x) => x.name === theme) ?? defaultTheme;
     const r = document.documentElement.style;
@@ -74,25 +104,11 @@ export default function Terminal() {
     r.setProperty("--glow", t.glow);
     r.setProperty("--scanline", t.light ? "0" : "0.10");
     document.documentElement.classList.toggle("light", !!t.light);
-    try {
-      localStorage.setItem("theme", t.name);
-    } catch {}
   }, [theme]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved && themes.some((t) => t.name === saved)) setTheme(saved);
-      setCrt(localStorage.getItem("crt") !== "off");
-    } catch {}
-  }, []);
 
   // `plain` lives on <html> so it also covers the ::before/::after overlays.
   useEffect(() => {
     document.documentElement.classList.toggle("plain", !crt);
-    try {
-      localStorage.setItem("crt", crt ? "on" : "off");
-    } catch {}
   }, [crt]);
 
   /**
@@ -145,8 +161,8 @@ export default function Terminal() {
         window.history.replaceState(null, "", url);
       }
 
-      if (res.setTheme) setTheme(res.setTheme);
-      if (res.setCrt !== undefined) setCrt(res.setCrt);
+      if (res.setTheme) chooseTheme(res.setTheme);
+      if (res.setCrt !== undefined) chooseCrt(res.setCrt);
       if (res.open) window.open(res.open, "_blank", "noopener,noreferrer");
       if (res.effect === "matrix") setMatrix(true);
       if (res.effect === "shake") {
@@ -154,7 +170,7 @@ export default function Terminal() {
         setTimeout(() => setShake(false), 500);
       }
     },
-    [history, stats]
+    [history, stats, chooseTheme, chooseCrt]
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -330,8 +346,8 @@ export default function Terminal() {
             <p className="dim">{config.identity.tagline}</p>
             <p className="hint">
               Type <span className="accent">help</span> and press Enter.
-              {" "}Hard to read? <span className="accent">crt off</span>.
             </p>
+            <ThemePicker theme={theme} onTheme={chooseTheme} crt={crt} onCrt={chooseCrt} />
           </div>
         </header>
 

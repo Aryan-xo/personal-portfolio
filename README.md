@@ -42,6 +42,12 @@ Unlisted: `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`, `date`, `echo`,
 Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
 an ambiguous prefix prints all matches.
 
+Output streams in a word at a time, the way a model's response lands. Any key
+or click jumps to the end, and readers whose OS asks for reduced motion get the
+whole block at once. `components/StreamedLines.tsx` holds the pacing: long
+output takes bigger bites so a block finishes in roughly 1.8s regardless of
+length, and punctuation draws a short breath.
+
 Themes: `theme <name>` — phosphor, amber, ice, matrix, vapor, paper. `paper` is
 a light theme and skips the CRT overlays.
 

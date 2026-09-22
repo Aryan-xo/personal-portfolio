@@ -5,8 +5,9 @@ import { themes, defaultTheme } from "@/lib/themes";
 import { runCommand, completions, type Line } from "@/lib/commands";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
+import StreamedLines from "./StreamedLines";
 
-type Block = { prompt?: string; lines: Line[] };
+type Block = { id: number; prompt?: string; lines: Line[] };
 
 const QUICK = [
   "about",
@@ -34,6 +35,7 @@ export default function Terminal() {
   const [matrix, setMatrix] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const nextId = useRef(0);
 
   // Inline suggestion: the remainder of the single best completion, shown as
   // ghost text after the cursor. Tab or → accepts it.
@@ -76,6 +78,10 @@ export default function Terminal() {
     } catch {}
   }, [crt]);
 
+  const follow = useCallback(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, []);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [blocks]);
@@ -93,7 +99,7 @@ export default function Terminal() {
         setBlocks([]);
         return;
       }
-      setBlocks((b) => [...b, { prompt: line, lines: res.lines }]);
+      setBlocks((b) => [...b, { id: nextId.current++, prompt: line, lines: res.lines }]);
 
       if (res.setTheme) setTheme(res.setTheme);
       if (res.setCrt !== undefined) setCrt(res.setCrt);
@@ -132,7 +138,10 @@ export default function Terminal() {
       if (ghost) {
         setInput(input + ghost + (hits.length === 1 ? " " : ""));
       } else if (hits.length > 1) {
-        setBlocks((b) => [...b, { prompt: input, lines: [{ text: "  " + hits.join("  ") }] }]);
+        setBlocks((b) => [
+          ...b,
+          { id: nextId.current++, prompt: input, lines: [{ text: "  " + hits.join("  ") }] },
+        ]);
       }
     } else if (e.key === "ArrowRight" && ghost) {
       const el = e.currentTarget;
@@ -168,18 +177,20 @@ export default function Terminal() {
 
       <div className="scroll">
         {blocks.map((b, i) => (
-          <div key={i} className="block">
+          <div key={b.id} className="block">
             {b.prompt !== undefined && (
               <div className="echo">
                 <Prompt />
                 <span>{b.prompt}</span>
               </div>
             )}
-            {b.lines.map((l, j) => (
-              <div key={j} className={l.cls ?? ""}>
-                {l.text || " "}
-              </div>
-            ))}
+            {/* Only the newest block streams; earlier ones have already settled. */}
+            <StreamedLines
+              lines={b.lines}
+              stream={i === blocks.length - 1}
+              onProgress={follow}
+              onDone={follow}
+            />
           </div>
         ))}
 

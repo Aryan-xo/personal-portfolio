@@ -8,9 +8,10 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = `${config.identity.name} — ${config.identity.headline}`;
 
-const BG = "#04120a";
-const FG = "#7cf9a6";
-const DIM = "#5aa876";
+// The card should look like the site's first paint, which is the paper theme.
+const BG = "#f5f2ea";
+const FG = "#23231f";
+const DIM = "#6b6759";
 
 const font = (name: string) =>
   readFile(join(process.cwd(), "assets", "fonts", name));

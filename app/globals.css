@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #04120a;
-  --fg: #7cf9a6;
-  --accent: #c6ffd9;
-  --dim: #5aa876;
-  --glow: 124, 249, 166;
+  /* Paper is the default, so its values are the ones the first paint uses —
+     no class has been added by then. The overlays are opt-in below. */
+  --bg: #f5f2ea;
+  --fg: #23231f;
+  --accent: #8a2020;
+  --dim: #6b6759;
+  --glow: 35, 35, 31;
   --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
 
   /* Glow is decoration; at body size it just blurs the glyphs. Headings get the
      full bloom, running text gets a hairline of it. */
+  --glow-text: none;
+  --glow-strong: none;
+  --scanline: 0;
+}
+
+/* A phosphor screen glows; paper does not. Added for any non-light theme. */
+html.crt-dark {
   --glow-text: 0 0 1px rgba(var(--glow), 0.28);
   --glow-strong: 0 0 6px rgba(var(--glow), 0.55), 0 0 20px rgba(var(--glow), 0.28);
   --scanline: 0.10;
@@ -44,7 +53,7 @@ body {
 .cmdrow:hover { color: var(--accent); }
 
 /* ── CRT overlays ───────────────────────────────────────── */
-.crt::before {
+html.crt-dark .crt::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -59,7 +68,7 @@ body {
   );
 }
 
-.crt::after {
+html.crt-dark .crt::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -79,11 +88,6 @@ body {
 html.plain .crt::before,
 html.plain .crt::after { display: none; }
 html.plain { --glow-text: none; --glow-strong: none; }
-
-/* On a light background the bloom muddies the glyphs and the vignette reads as
-   a dirty edge, so a light theme gets neither. */
-html.light { --glow-text: none; --glow-strong: none; }
-html.light .crt::after { display: none; }
 
 .shake { animation: shake 90ms 5; }
 @keyframes shake {

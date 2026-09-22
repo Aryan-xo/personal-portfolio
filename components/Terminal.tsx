@@ -102,8 +102,9 @@ export default function Terminal() {
     r.setProperty("--accent", t.accent);
     r.setProperty("--dim", t.dim);
     r.setProperty("--glow", t.glow);
-    r.setProperty("--scanline", t.light ? "0" : "0.10");
     document.documentElement.classList.toggle("light", !!t.light);
+    // Drives the scanlines, vignette and glow; `--scanline` comes with it.
+    document.documentElement.classList.toggle("crt-dark", !t.light);
   }, [theme]);
 
   // `plain` lives on <html> so it also covers the ::before/::after overlays.

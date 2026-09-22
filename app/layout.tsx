@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { config } from "@/lib/config";
+import { themes, defaultTheme } from "@/lib/themes";
 import "./globals.css";
 
 // Vercel sets this on deploys; localhost is the fallback for `next dev`.
@@ -31,9 +32,30 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020a02",
-  colorScheme: "dark",
+  themeColor: defaultTheme.bg,
+  colorScheme: "light dark",
 };
+
+/**
+ * Applies the stored theme before the first paint. Without it a reader who
+ * chose a dark theme gets a frame of paper-white on every navigation, which is
+ * worse than any flash the script itself costs.
+ */
+const themeBootstrap = `
+(function(){try{
+  var t=${JSON.stringify(
+    Object.fromEntries(themes.map((t) => [t.name, [t.bg, t.fg, t.accent, t.dim, t.glow, t.light ? 1 : 0]]))
+  )};
+  var n=localStorage.getItem("theme");
+  var v=t[n];
+  if(v){var r=document.documentElement;
+    r.style.setProperty("--bg",v[0]);r.style.setProperty("--fg",v[1]);
+    r.style.setProperty("--accent",v[2]);r.style.setProperty("--dim",v[3]);
+    r.style.setProperty("--glow",v[4]);
+    r.classList.toggle("light",!!v[5]);r.classList.toggle("crt-dark",!v[5]);}
+  if(localStorage.getItem("crt")==="off")document.documentElement.classList.add("plain");
+}catch(e){}})();
+`;
 
 const personSchema = {
   "@context": "https://schema.org",
@@ -58,7 +80,10 @@ const personSchema = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body>
         {children}
         <Analytics />

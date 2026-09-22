@@ -165,8 +165,13 @@ length, and punctuation draws a short breath.
 
 Themes: six swatches sit under the header, each painted in the colours it
 selects, alongside a switch for the CRT overlays. `theme <name>` and `crt on` /
-`crt off` do the same from the prompt. `paper` is a light theme and skips the
-overlays automatically.
+`crt off` do the same from the prompt.
+
+`paper` is the default, so its colours are what `:root` carries and the CRT
+overlays are opt-in — a class the client adds for any non-light theme — which
+means the first paint needs no JavaScript to look right. A small script in the
+document head then applies a stored preference before that paint, since a
+reader who chose a dark theme should not get a frame of white on every visit.
 
 Both preferences are written when they change rather than from an effect
 watching the value — an effect keyed on state runs once with the default before

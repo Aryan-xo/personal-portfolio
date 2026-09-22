@@ -194,6 +194,25 @@ export default function Terminal() {
     [history, stats, chooseTheme, chooseCrt, chooseSound]
   );
 
+  /*
+   * Stopping is armed a beat after the tour begins, and only while one is
+   * running. Registering it globally killed any tour started from the prompt:
+   * React's handler runs before the event reaches the window, so `tour` would
+   * start the run and the same Enter keypress would then stop it.
+   */
+  const armStop = useCallback(() => {
+    const stop = () => {
+      touring.current = false;
+    };
+    const t = setTimeout(() => {
+      for (const ev of ["keydown", "pointerdown"]) window.addEventListener(ev, stop);
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      for (const ev of ["keydown", "pointerdown"]) window.removeEventListener(ev, stop);
+    };
+  }, []);
+
   /**
    * Types a sequence into the prompt as though someone were at the keyboard,
    * waiting for each command's output to settle before starting the next. Any
@@ -204,6 +223,7 @@ export default function Terminal() {
     async (commands: string[]) => {
       if (touring.current) return;
       touring.current = true;
+      const disarm = armStop();
 
       const wait = (ms: number) =>
         new Promise((r) => setTimeout(r, ms));
@@ -233,21 +253,13 @@ export default function Terminal() {
         await wait(650);
       }
       touring.current = false;
+      disarm();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
-  // Any input of the reader's own ends the tour.
-  useEffect(() => {
-    const stop = () => {
-      touring.current = false;
-    };
-    for (const ev of ["keydown", "pointerdown"]) window.addEventListener(ev, stop);
-    return () => {
-      for (const ev of ["keydown", "pointerdown"]) window.removeEventListener(ev, stop);
-    };
-  }, []);
+
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     follow(true);

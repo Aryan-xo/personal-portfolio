@@ -101,6 +101,21 @@ shows a contents list, a few counts and the outbound links.
 The `find <term>` command runs the same search from the terminal, which is also
 the fallback below 1240px where the sidebar is hidden.
 
+## Small screens
+
+Output is wrapped in JavaScript rather than by CSS, because the hanging indents
+that make a bullet list readable cannot be expressed with `pre-wrap` alone. The
+column count therefore has to follow the viewport: the terminal measures its own
+character width and re-wraps every block when the window changes size. A block
+keeps the command that produced it, not the resulting text, so the lines can be
+derived again at any width.
+
+Below 1240px the sidebar and its divider are hidden and `find` covers the same
+ground. Below 820px the type shrinks, the header centres and the quick commands
+grow to a comfortable thumb target. The prompt's real input carries a 16px font
+regardless — the visible text is a sibling span, so it costs nothing visually
+and stops iOS zooming the page when the input takes focus.
+
 ## Commands
 
 `help` lists the public ones: about, whoami, experience, research, projects,

@@ -1,8 +1,9 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { config } from "@/lib/config";
 import { themes, defaultTheme } from "@/lib/themes";
 import { runCommand, completions, linkable, type Line } from "@/lib/commands";
+import { setWrap } from "@/lib/render";
 import AsciiPortrait from "./AsciiPortrait";
 import MatrixRain from "./MatrixRain";
 import StreamedLines from "./StreamedLines";
@@ -11,7 +12,12 @@ import Screensaver from "./Screensaver";
 import Resizer from "./Resizer";
 import type { Stats } from "@/app/api/stats/route";
 
-type Block = { id: number; prompt?: string; lines: Line[] };
+/**
+ * A block keeps the command that produced it, not the text. Output is wrapped
+ * to a column count that depends on the viewport, so the lines have to be
+ * derivable again when the window changes size.
+ */
+type Block = { id: number; prompt?: string; cmd?: string; lines?: Line[] };
 
 const QUICK = [
   "about",
@@ -40,6 +46,7 @@ export default function Terminal() {
   // undefined while in flight, null if the endpoint failed.
   const [stats, setStats] = useState<Stats | null | undefined>(undefined);
   const [crt, setCrt] = useState(true);
+  const [cols, setCols] = useState(96);
   const [matrix, setMatrix] = useState(false);
   const [idle, setIdle] = useState(false);
   const [shake, setShake] = useState(false);
@@ -127,7 +134,7 @@ export default function Terminal() {
         window.history.replaceState(null, "", url);
         return;
       }
-      setBlocks((b) => [...b, { id: nextId.current++, prompt: line, lines: res.lines }]);
+      setBlocks((b) => [...b, { id: nextId.current++, prompt: line, cmd: line }]);
 
       // Reflect the last meaningful command in the URL, so the page can be
       // linked straight to a section.
@@ -207,6 +214,46 @@ export default function Terminal() {
   const focus = () => {
     inputRef.current?.focus();
   };
+
+  // Re-wrap every block when the column count changes. Rendering a command is
+  // pure — the side effects ran when it was submitted — so this is safe.
+  const rendered = useMemo(() => {
+    // Set the column count before anything is formatted with it.
+    setWrap(cols);
+    return blocks.map((b) =>
+      b.cmd !== undefined ? runCommand(b.cmd, { history, stats }).lines : b.lines!
+    );
+  }, [blocks, cols, history, stats]);
+
+  // Measure how many characters fit and wrap output to match.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    // Fixed, so the probe never contributes to the document's scroll width —
+    // absolutely positioned it resolved against the viewport and widened the
+    // page by its own length.
+    const probe = document.createElement("span");
+    probe.textContent = "0".repeat(100);
+    probe.style.cssText =
+      "position:fixed;top:0;left:0;visibility:hidden;white-space:pre;pointer-events:none;";
+    el.appendChild(probe);
+
+    const measure = () => {
+      const chWidth = probe.getBoundingClientRect().width / 100;
+      if (!chWidth) return;
+      const fit = Math.floor(el.clientWidth / chWidth) - 1; // spare a column for the scrollbar
+      setCols((prev) => (Math.abs(prev - fit) < 2 ? prev : fit));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      probe.remove();
+    };
+  }, []);
 
   // Drift into the screensaver after a couple of minutes untouched.
   useEffect(() => {
@@ -298,7 +345,7 @@ export default function Terminal() {
             )}
             {/* Only the newest block streams; earlier ones have already settled. */}
             <StreamedLines
-              lines={b.lines}
+              lines={rendered[i]}
               stream={i === blocks.length - 1}
               // Soft while streaming, so scrolling up mid-flow isn't fought;
               // forced on completion, so finished output always lands at the

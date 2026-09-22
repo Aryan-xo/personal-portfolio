@@ -27,6 +27,9 @@ html, body {
   line-height: 1.62;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
+  /* Stop iOS enlarging text in landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -165,6 +168,7 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
    prompt stays put instead of walking off the bottom of the page. */
 .term {
   height: 100dvh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   padding: 3vh 1.5rem 0 2.5rem;
@@ -175,6 +179,7 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 
 .header {
   display: flex;
+  min-width: 0;
   gap: 2.5rem;
   align-items: center;
   flex-wrap: nowrap;
@@ -226,6 +231,7 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 }
 .portrait-row { display: block; }
 
+.headline { min-width: 0; }
 .headline h1 {
   margin: 0 0 .5rem;
   font-size: clamp(1.5rem, 4vw, 2.6rem);
@@ -240,6 +246,7 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 .scroll {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -325,6 +332,8 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 
 .chips {
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   gap: .5rem;
   overflow-x: auto;
@@ -351,10 +360,40 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 }
 
 @media (max-width: 820px) {
-  html, body { font-size: 14px; }
-  .header { flex-wrap: wrap; gap: 1.1rem; justify-content: center; text-align: center; }
+  html, body { font-size: 13px; }
+
+  .term { padding: 2vh 3.5vw 0; }
+  .header {
+    flex-wrap: wrap;
+    gap: .9rem;
+    justify-content: center;
+    text-align: center;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
   .headline { width: 100%; }
-  .portrait { font-size: clamp(2.6px, 1.05vw, 5px); }
+  .headline h1 { font-size: clamp(1.4rem, 8vw, 2rem); }
+  .portrait { font-size: clamp(2.4px, 2.4vw, 4.4px); }
+
+  .block { margin-bottom: 1.5rem; }
+  .chips { gap: .4rem; padding: .6rem 0 .8rem; }
+  /* A comfortable thumb target. */
+  .chips button { padding: .5rem .8rem; min-height: 40px; }
+
+  /* The visible text is a sibling span, so the real input can carry the 16px
+     iOS requires to leave the page alone on focus without changing anything. */
+  .inputrow input { font-size: 16px; }
+}
+
+@media (max-width: 460px) {
+  html, body { font-size: 12.5px; }
+  .portrait { font-size: clamp(2.2px, 2.9vw, 4px); }
+  .header { gap: .7rem; }
+}
+
+/* A touch device has no pointer to light the portrait with. */
+@media (hover: none) {
+  .portrait-torch { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -527,7 +566,11 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 @media (max-width: 1240px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar, .resizer { display: none; }
-  .term { padding: 3vh 4vw 0; max-width: 1080px; margin: 0 auto; }
+  .term {
+    padding: 3vh 4vw 0;
+    max-width: 100%;
+    margin: 0 auto;
+  }
 }
 
 

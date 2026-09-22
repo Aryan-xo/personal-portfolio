@@ -12,7 +12,17 @@ export function rule(label = "") {
   return D(label ? `── ${label} ${"─".repeat(Math.max(0, 56 - label.length))}` : "─".repeat(60));
 }
 
-const WRAP = 96;
+/**
+ * Output is wrapped here rather than by CSS, because the hanging indents that
+ * make a bullet list readable cannot be expressed with `pre-wrap` alone. That
+ * means the column count has to follow the viewport: the terminal measures its
+ * own width and sets this on mount and on resize.
+ */
+let WRAP = 96;
+export const setWrap = (cols: number) => {
+  WRAP = Math.max(28, Math.min(120, Math.floor(cols)));
+};
+export const getWrap = () => WRAP;
 
 /** Greedy word wrap, with every line after the first indented to `hang`. */
 export function wrap(text: string, indent = 2, hang = indent): Line[] {
@@ -36,6 +46,10 @@ export function wrap(text: string, indent = 2, hang = indent): Line[] {
   return out.map((t, i) => P(i === 0 ? t : t.replace(/^(\s*)·\s*/, (_, sp) => sp + "  ")));
 }
 
+/** Wrap, keeping a class on every resulting line. */
+const wrapAs = (cls: Line["cls"], text: string, indent = 0, hang = indent): Line[] =>
+  wrap(text, indent, hang).map((l) => ({ ...l, cls }));
+
 // ─────────────────────────────────────────────────────────────
 // One renderer per kind of entry. The section commands map over these, and
 // `show` uses a single one, so a result opened from search reads exactly as it
@@ -51,18 +65,18 @@ type Achievement = (typeof config.achievements)[number];
 type Education = (typeof config.education)[number];
 
 export const renderExperience = (e: Experience): Line[] => [
-  A(`${e.role} @ ${e.company}`),
-  D(`${e.period} · ${e.location}`),
-  ...(e.note ? wrap(e.note, 2).map((l) => D(l.text)) : []),
+  ...wrapAs("accent", `${e.role} @ ${e.company}`, 0, 2),
+  ...wrapAs("dim", `${e.period} · ${e.location}`, 0, 2),
+  ...(e.note ? wrapAs("dim", e.note, 2) : []),
   ...e.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
-  D(`  [ ${e.stack.join(" · ")} ]`),
+  ...wrapAs("dim", `[ ${e.stack.join(" · ")} ]`, 2, 4),
 ];
 
 export const renderResearch = (r: Research): Line[] => [
-  A(r.lab),
-  P(`  ${r.role} · ${r.advisor}`),
+  ...wrapAs("accent", r.lab, 0, 2),
+  ...wrap(`${r.role} · ${r.advisor}`, 2, 4),
   D(`  ${r.period}`),
-  ...wrap(r.note, 2).map((l) => D(l.text)),
+  ...wrapAs("dim", r.note, 2),
   P(),
   D("  Approach"),
   ...r.approach.flatMap((b) => wrap(`• ${b}`, 2, 4)),
@@ -72,23 +86,23 @@ export const renderResearch = (r: Research): Line[] => [
 ];
 
 export const renderProject = (p: Project): Line[] => [
-  A(p.name),
-  D(`  ${p.period}  ·  ${p.tag}`),
+  ...wrapAs("accent", p.name, 0, 2),
+  ...wrapAs("dim", `${p.period}  ·  ${p.tag}`, 2, 4),
   ...wrap(p.blurb, 2),
-  D(`  ${p.stack.join(" · ")}${p.url ? `  →  ${p.url}` : ""}`),
+  ...wrapAs("dim", `${p.stack.join(" · ")}${p.url ? `  →  ${p.url}` : ""}`, 2, 4),
 ];
 
 export const renderFinance = (f: Finance): Line[] => [
-  A(f.name),
-  D(`  ${f.period}  ·  ${f.tag}`),
+  ...wrapAs("accent", f.name, 0, 2),
+  ...wrapAs("dim", `${f.period}  ·  ${f.tag}`, 2, 4),
   ...f.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
 ];
 
 export const renderLeadership = (l: Leadership): Line[] => [
-  A(l.role),
-  P(`  ${l.org}`),
+  ...wrapAs("accent", l.role, 0, 2),
+  ...wrap(l.org, 2, 4),
   D(`  ${l.period}`),
-  ...(l.note ? wrap(l.note, 2).map((x) => D(x.text)) : []),
+  ...(l.note ? wrapAs("dim", l.note, 2) : []),
   ...l.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
 ];
 
@@ -96,9 +110,9 @@ export const renderAchievement = (a: Achievement): Line[] =>
   wrap(`${a.year}  ·  ${a.text}`, 2, 10);
 
 export const renderEducation = (e: Education): Line[] => [
-  A(e.school),
-  P(`  ${e.degree}`),
-  D(`  ${e.period} · ${e.detail}`),
+  ...wrapAs("accent", e.school, 0, 2),
+  ...wrap(e.degree, 2, 4),
+  ...wrapAs("dim", `${e.period} · ${e.detail}`, 2, 4),
   ...e.extra.flatMap((x) => wrap(`· ${x}`, 2, 4)),
 ];
 
@@ -109,7 +123,7 @@ export const renderSkillGroup = ([group, items]: [string, readonly string[]]): L
   return [{ text: `  ${pad(group, 15)}${first.text.trimStart()}` }, ...rest];
 };
 
-export const renderInterest = (i: string): Line[] => [P(`  • ${i}`)];
+export const renderInterest = (i: string): Line[] => wrap(`• ${i}`, 2, 4);
 
 export const renderAbout = (): Line[] => [
   ...config.identity.summary.flatMap((s) => (s ? wrap(s, 2) : [P()])),

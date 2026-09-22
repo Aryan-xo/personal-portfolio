@@ -47,7 +47,6 @@ export const config = {
   },
 
   resumeUrl: "/resume.pdf",
-  resumeFullUrl: "/resume-full.pdf", // the longer academic CV
 
   experience: [
     {

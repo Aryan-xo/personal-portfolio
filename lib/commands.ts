@@ -64,7 +64,7 @@ export const commandList = [
   ["interests", "what I do off the clock"],
   ["contact", "email, phone, address"],
   ["social", "github, linkedin, leetcode"],
-  ["resume", "download the PDF · `resume full` for the long one"],
+  ["resume", "download the PDF"],
   ["neofetch", "system info, portfolio edition"],
   ["theme", "switch colour scheme"],
   ["crt", "toggle scanlines and glow"],
@@ -93,9 +93,6 @@ export function completions(raw: string): string[] {
     }
     if (cmd.toLowerCase() === "crt") {
       return ["on", "off"].filter((n) => n.startsWith(partial.toLowerCase()));
-    }
-    if (/^(resume|cv)$/i.test(cmd)) {
-      return ["full"].filter((n) => n.startsWith(partial.toLowerCase()));
     }
     return [];
   }
@@ -317,17 +314,8 @@ export function runCommand(raw: string, ctx: { history: string[] }): CmdResult {
     case "email":
       return { lines: [D(`composing to ${c.contact.email} …`)], open: `mailto:${c.contact.email}` };
     case "resume":
-    case "cv": {
-      const full = /^(full|long|2|2page)$/i.test(arg);
-      const url = full ? c.resumeFullUrl : c.resumeUrl;
-      return {
-        lines: [
-          D(`downloading ${url} …`),
-          ...(full ? [] : [D("  `resume full` opens the longer academic CV instead.")]),
-        ],
-        open: url,
-      };
-    }
+    case "cv":
+      return { lines: [D(`downloading ${c.resumeUrl} …`)], open: c.resumeUrl };
 
     case "neofetch": {
       const info: [string, string][] = [

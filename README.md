@@ -39,9 +39,6 @@ Unlisted: `sudo`, `matrix`, `vim`, `ls`, `cat`, `pwd`, `date`, `echo`,
 `history`, `exit`, plus aliases (`work`, `awards`, `quant`, `por`, `certs`,
 `hobbies`, `cv`).
 
-`resume` downloads the one-page SDE CV; `resume full` downloads the two-page
-academic one.
-
 Typing shows an inline suggestion in dim text — Tab or → accepts it, and Tab on
 an ambiguous prefix prints all matches.
 

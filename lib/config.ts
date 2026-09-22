@@ -27,7 +27,7 @@ export const config = {
       "market analysis and an omnichannel expansion plan, forging partnerships with",
       "industry leaders. Before that: ad-tech ML at Mobavenue, NLP engineering at",
       "Customer Shastra, and supercapacitor research at Toyota Technological",
-      "Institute in Nagoya. CFA Level 1 candidate.",
+      "Institute in Nagoya.",
       "",
       "Type `experience`, `projects`, `research` or `leadership` to dig in.",
     ],

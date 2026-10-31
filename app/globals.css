@@ -925,6 +925,8 @@ body.resizing .term, body.resizing .sidebar { pointer-events: none; }
 .lightbox-img { position: relative; width: 92vw; height: 82vh; }
 .lightbox-img img { object-fit: contain; }
 .lightbox figcaption { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem 1.2rem; font-size: 13px; }
+/* Camera settings get their own line under the caption. */
+.lightbox .exif { flex-basis: 100%; text-align: center; font-size: 12px; letter-spacing: .02em; }
 .lightbox button {
   position: fixed;
   font: inherit;

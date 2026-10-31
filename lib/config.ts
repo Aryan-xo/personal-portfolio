@@ -13,7 +13,15 @@ export type Post = {
 };
 export type Til = { date: string; tag: string; text: string; draft?: boolean };
 export type Now = { updated: string; items: [string, string][]; draft?: boolean };
-export type Photo = { src: string; alt: string; caption?: string; place?: string; date?: string };
+export type Photo = {
+  src: string;
+  alt: string;
+  caption?: string;
+  place?: string;
+  date?: string;
+  /** Kept here because the published file has its metadata stripped. */
+  exif?: { camera: string; focal?: string; aperture?: string; shutter?: string; iso?: number };
+};
 export type Hire = {
   status: "open" | "selective" | "closed";
   headline: string;
@@ -548,8 +556,19 @@ export const config = {
   // `gallery`. Put the files in public/gallery/ and list them here, e.g.
   //   { src: "/gallery/milky-way.jpg", alt: "The Milky Way over a ridge",
   //     caption: "Milky Way core", place: "Spiti Valley", date: "2025-05" },
-  // Export at around 2400px on the long side; the site resizes them.
-  gallery: [] as Photo[],
+  // Export at around 2400px on the long side; the site resizes them. Strip the
+  // metadata before publishing — a phone photo carries the GPS of where it was
+  // taken — and copy the camera settings into `exif` instead.
+  gallery: [
+    {
+      src: "/gallery/rameshwaram-stars.jpg",
+      alt: "A star-filled night sky with a thin cloud drifting across it",
+      caption: "Stars over Rameshwaram",
+      place: "Rameshwaram, Tamil Nadu",
+      date: "Oct 2026",
+      exif: { camera: "iPhone 17", focal: "26mm", aperture: "ƒ/1.6", shutter: "1.1s", iso: 2000 },
+    },
+  ] as Photo[],
 
   // `hire`. status is "open", "selective" (the right role only) or "closed".
   hire: {

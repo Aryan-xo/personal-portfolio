@@ -149,7 +149,14 @@ function Gallery() {
               <figcaption>
                 <span className="accent">{p.caption ?? p.alt}</span>
                 <span className="dim">{[p.place, p.date].filter(Boolean).join(" · ")}</span>
-                <span className="dim">{open! + 1} / {photos.length}</span>
+                {p.exif && (
+                  <span className="dim exif">
+                    {[p.exif.camera, p.exif.focal, p.exif.aperture, p.exif.shutter, p.exif.iso && `ISO ${p.exif.iso}`]
+                      .filter(Boolean)
+                      .join("  ·  ")}
+                  </span>
+                )}
+                {photos.length > 1 && <span className="dim">{open! + 1} / {photos.length}</span>}
               </figcaption>
             </figure>
             {photos.length > 1 && (

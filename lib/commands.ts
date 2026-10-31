@@ -397,7 +397,11 @@ export function runCommand(
       return {
         lines: [
           rule("gallery"),
-          D(`  ${c.gallery.length} photograph${c.gallery.length === 1 ? "" : "s"} · click one to open it, ← → to move between them`),
+          D(
+            c.gallery.length === 1
+              ? "  1 photograph · click it to open it full size"
+              : `  ${c.gallery.length} photographs · click one to open it, ← → to move between them`
+          ),
         ],
         widget: "gallery",
       };

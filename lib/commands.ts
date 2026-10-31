@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { config, published } from "./config";
 import { themes } from "./themes";
 import { portraitSmall } from "./portrait";
 import { search, byId } from "./search";
@@ -10,7 +10,8 @@ import {
   A, D, P, pad, rule, wrap,
   renderAbout, renderAchievement, renderCertification, renderEducation,
   renderExperience, renderFinance, renderInterest, renderLeadership,
-  renderProject, renderResearch, renderSkillGroup,
+  renderPost, renderPostSummary, renderProject, renderResearch, renderSkillGroup,
+  renderTil,
   type Line,
 } from "./render";
 
@@ -25,19 +26,55 @@ export type CmdResult = {
   setSound?: boolean;
   open?: string;
   effect?: "matrix" | "shake";
+  /** Something interactive to render under the text: a form, a photo grid. */
+  widget?: Widget;
 };
+
+export type Widget = "gallery" | "guestbook" | "hire" | "music";
+
+const posts = () => config.writing.filter(published);
+const tils = () => config.til.filter(published);
+
+export const HIRE_STATUS = {
+  open: "● Open to new roles",
+  selective: "◐ Open to the right role",
+  closed: "○ Not looking right now",
+} as const;
+
+/**
+ * Whether a section has anything to show on this build. Help and the quick
+ * chips skip the empty ones, so the live site never advertises a drawer with
+ * nothing in it while the content is still a draft.
+ */
+export function available(name: string): boolean {
+  switch (name) {
+    case "writing": return posts().length > 0;
+    case "til": return tils().length > 0;
+    case "now": return published(config.now);
+    case "hire": return published(config.hire);
+    case "gallery": return config.gallery.length > 0;
+    default: return true;
+  }
+}
 
 export const commandList = [
   ["help", "show this list"],
   ["about", "who I am"],
   ["whoami", "the short version"],
   ["experience", "where I've worked"],
+  ["hire", "am I available, and how to reach me"],
   ["research", "lab work in Japan"],
   ["timeline", "the whole thing as a chart"],
   ["tour", "let the terminal show you around"],
   ["gh", "live GitHub and LeetCode stats"],
   ["contrib", "commit activity as a heatmap"],
   ["projects", "things I've built"],
+  ["writing", "longer notes · read <slug>"],
+  ["til", "today I learned"],
+  ["now", "what I'm up to this month"],
+  ["gallery", "photographs, mostly at night"],
+  ["music", "what I'm listening to"],
+  ["guestbook", "leave a note"],
   ["finance", "quant and valuation work"],
   ["skills", "what I work with"],
   ["achievements", "wins worth listing"],
@@ -62,7 +99,7 @@ export const commandNames = [
   "github", "linkedin", "leetcode", "email", "ls", "cat", "pwd", "date", "echo",
   "sudo", "matrix", "vim", "exit", "history", "man", "work", "awards", "quant",
   "por", "certs", "hobbies", "cv", "grep", "search", "gantt", "stats", "heatmap",
-  "play", "audio",
+  "play", "audio", "blog", "posts", "read", "spotify", "np", "photos", "availability",
   "show",
 ];
 
@@ -81,6 +118,9 @@ export function completions(raw: string): string[] {
     if (/^(tour|play)$/i.test(cmd)) {
       return tourNames.filter((n) => n.startsWith(partial.toLowerCase()));
     }
+    if (cmd.toLowerCase() === "read") {
+      return posts().map((p) => p.slug).filter((n) => n.startsWith(partial.toLowerCase()));
+    }
     if (cmd.toLowerCase() === "crt") {
       return ["on", "off"].filter((n) => n.startsWith(partial.toLowerCase()));
     }
@@ -98,6 +138,7 @@ export const linkable = new Set([
   "about", "whoami", "experience", "research", "projects", "finance", "skills",
   "achievements", "leadership", "education", "certifications", "interests",
   "contact", "social", "timeline", "neofetch", "help",
+  "writing", "til", "now", "gallery", "music", "guestbook", "hire",
 ]);
 
 export function runCommand(
@@ -118,7 +159,7 @@ export function runCommand(
       return {
         lines: [
           rule("commands"),
-          ...commandList.map(([name, desc]) => ({
+          ...commandList.filter(([name]) => available(name)).map(([name, desc]) => ({
             text: `  ${pad(name, 14)}${desc}`,
             cls: "cmdrow",
           })),
@@ -298,6 +339,108 @@ export function runCommand(
 
       out.push(P(), D("  Refreshed hourly, straight from the APIs."));
       return { lines: out };
+    }
+
+    case "writing":
+    case "blog":
+    case "posts": {
+      const list = posts();
+      if (!list.length) return { lines: [D("Nothing published yet. Soon.")] };
+      return {
+        lines: [
+          rule("writing"),
+          ...list.flatMap((p) => [...renderPostSummary(p), P()]),
+          D("  `read <slug>` opens one."),
+        ],
+      };
+    }
+
+    case "read": {
+      const post = posts().find((p) => p.slug === arg.toLowerCase());
+      if (!post) {
+        return {
+          lines: [
+            ...(arg ? [{ text: `read: no such post: ${arg}`, cls: "err" }] : [D("usage: read <slug>")]),
+            ...posts().map((p) => P(`  ${pad(p.slug, 16)}${p.title}`)),
+          ],
+        };
+      }
+      return { lines: [rule("writing"), ...renderPost(post)] };
+    }
+
+    case "til": {
+      const list = tils();
+      if (!list.length) return { lines: [D("Nothing here yet.")] };
+      return {
+        lines: [rule("today I learned"), ...list.flatMap((t) => [...renderTil(t), P()])],
+      };
+    }
+
+    case "now": {
+      if (!published(c.now)) return { lines: [D("Nothing here yet.")] };
+      return {
+        lines: [
+          rule(`now${c.now.draft ? " (draft)" : ""}`),
+          ...c.now.items.flatMap(([k, v]) => {
+            const [first, ...rest] = wrap(v, 15, 15);
+            return [{ text: `  ${pad(k, 13)}${first.text.trimStart()}` }, ...rest];
+          }),
+          P(),
+          D(`  Updated ${c.now.updated}.`),
+        ],
+      };
+    }
+
+    case "gallery":
+    case "photos":
+      if (!c.gallery.length) return { lines: [D("The gallery is empty for now — check back after a clear night.")] };
+      return {
+        lines: [
+          rule("gallery"),
+          D(`  ${c.gallery.length} photograph${c.gallery.length === 1 ? "" : "s"} · click one to open it, ← → to move between them`),
+        ],
+        widget: "gallery",
+      };
+
+    case "spotify":
+    case "music":
+    case "np":
+      return { lines: [rule("listening")], widget: "music" };
+
+    case "guestbook":
+      return {
+        lines: [
+          rule("guestbook"),
+          D("  Say hello, leave a note. It shows up for everyone, so keep it kind."),
+        ],
+        widget: "guestbook",
+      };
+
+    case "hire":
+    case "availability": {
+      const h = c.hire;
+      if (!published(h)) return { lines: [D("`contact` has the ways to reach me.")] };
+      return {
+        lines: [
+          rule(`availability${h.draft ? " (draft)" : ""}`),
+          A(`  ${HIRE_STATUS[h.status]}`),
+          ...wrap(h.headline, 2),
+          P(),
+          ...([
+            ["Roles", h.roles.join(" · ")],
+            ["Where", h.locations.join(" · ")],
+            ["Start", h.start],
+          ] as const).flatMap(([k, v]) => {
+            const [first, ...rest] = wrap(v, 11, 11);
+            return [{ text: `  ${pad(k, 9)}${first.text.trimStart()}` }, ...rest];
+          }),
+          P(),
+          ...h.pitch.flatMap((x, i) => [...(i ? [P()] : []), ...wrap(x, 2)]),
+          P(),
+          D("  Fill this in and it opens an email to me, already written."),
+        ],
+        widget: "hire",
+      };
     }
 
     case "timeline":
@@ -509,7 +652,7 @@ export function runCommand(
             text:
               "  about/  experience/  research/  projects/  finance/  skills/\n" +
               "  achievements/  leadership/  education/  certifications/  interests/\n" +
-              "  contact/  resume.pdf",
+              "  writing/  til/  now/  gallery/  guestbook/  hire/  contact/  resume.pdf",
             cls: "accent",
           },
         ],

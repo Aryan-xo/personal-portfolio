@@ -2,6 +2,32 @@
 // EDIT THIS FILE. Every word on the site comes from here.
 // ─────────────────────────────────────────────────────────────
 
+export type Post = {
+  slug: string;
+  title: string;
+  date: string;
+  summary: string;
+  tags: string[];
+  body: string[];
+  draft?: boolean;
+};
+export type Til = { date: string; tag: string; text: string; draft?: boolean };
+export type Now = { updated: string; items: [string, string][]; draft?: boolean };
+export type Photo = { src: string; alt: string; caption?: string; place?: string; date?: string };
+export type Hire = {
+  status: "open" | "selective" | "closed";
+  headline: string;
+  roles: string[];
+  locations: string[];
+  start: string;
+  pitch: string[];
+  draft?: boolean;
+};
+
+/** Drafts are visible while developing and hidden from the deployed site. */
+export const published = <T extends { draft?: boolean }>(x: T) =>
+  !x.draft || process.env.NODE_ENV === "development";
+
 export const config = {
   user: "aryan",
   host: "iitb",
@@ -30,6 +56,16 @@ export const config = {
     ],
   },
 
+  // The strip under the headline. A value and what it counts, nothing else —
+  // it is there to be read in the two seconds before anyone decides to type.
+  highlights: [
+    ["IIT Bombay", "B.Tech '26"],
+    ["5", "internships"],
+    ["3", "recommendation letters, one from a CEO"],
+    ["200K+", "messages a month through a service I built"],
+    ["5th", "nationally, Smart India Hackathon"],
+  ],
+
   contact: {
     email: "aryankr.iitb@gmail.com",
     emailAlt: "22b2423@iitb.ac.in",
@@ -49,6 +85,7 @@ export const config = {
   experience: [
     {
       company: "Loop Health",
+      logo: "/logos/loop-health.png",
       role: "Software Engineer",
       period: "Jun 2026 — Present",
       location: "Bangalore, India",
@@ -66,6 +103,7 @@ export const config = {
     },
     {
       company: "Indian Institute of Technology, Bombay",
+      logo: "/logos/iitb.png",
       role: "Undergraduate Teaching Assistant",
       period: "Jan 2026 — May 2026",
       location: "Mumbai, India",
@@ -77,6 +115,7 @@ export const config = {
     },
     {
       company: "Discovr AI",
+      logo: "/logos/discovr.png",
       role: "Full Stack AI Intern",
       period: "Mar 2026 — Apr 2026",
       location: "Remote",
@@ -88,6 +127,7 @@ export const config = {
     },
     {
       company: "Mobavenue Media",
+      logo: "/logos/mobavenue.png",
       role: "Founder's Office · Machine Learning Intern",
       period: "Feb 2025 — Aug 2025",
       location: "Mumbai, India",
@@ -103,6 +143,7 @@ export const config = {
     },
     {
       company: "PhillipCapital India",
+      logo: "/logos/phillipcapital.png",
       role: "Product and Strategy Intern",
       period: "May 2025 — Jul 2025",
       location: "Mumbai, India",
@@ -118,6 +159,7 @@ export const config = {
     },
     {
       company: "Customer Shastra",
+      logo: "/logos/customer-shastra.png",
       role: "Natural Language Processing Engineer",
       period: "May 2024 — Jul 2024",
       location: "Mumbai, India",
@@ -134,6 +176,7 @@ export const config = {
   research: [
     {
       lab: "Toyota Technological Institute, Japan",
+      logo: "/logos/toyota-ti.png",
       role: "Research Intern",
       period: "May 2024 — Jul 2024",
       advisor: "Prof. Masamichi Yoshimura · Surface Science Laboratory, Nagoya",
@@ -364,6 +407,7 @@ export const config = {
   education: [
     {
       school: "Indian Institute of Technology, Bombay",
+      logo: "/logos/iitb.png",
       degree: "B.Tech · Metallurgical Engineering and Materials Science",
       period: "Oct 2022 — May 2026",
       detail: "CPI 8.23/10 · Mumbai, India",
@@ -373,6 +417,7 @@ export const config = {
     },
     {
       school: "Pragya Bharti Public School",
+      logo: "",
       degree: "Intermediate, CBSE",
       period: "2019 — 2021",
       detail: "India",
@@ -380,6 +425,7 @@ export const config = {
     },
     {
       school: "Manav Bharti National School",
+      logo: "",
       degree: "Matriculation, CBSE",
       period: "Apr 2010 — Mar 2019",
       detail: "India",
@@ -430,6 +476,94 @@ export const config = {
       "Psychology",
     ],
   },
+
+  // ───────────────────────────────────────────────────────────
+  // Anything marked `draft: true` shows under `npm run dev` and nowhere else,
+  // so a half-written post or a guess at your availability never reaches the
+  // live site. Delete the flag when it reads the way you want.
+  // ───────────────────────────────────────────────────────────
+
+  // `writing` lists these, `read <slug>` prints one. In `body`, a line starting
+  // "## " is a heading, "- " a bullet, and four spaces a line of code; anything
+  // else is a paragraph.
+  writing: [
+    {
+      slug: "ugit",
+      title: "Building Git from scratch in Java",
+      date: "2026-05-20",
+      summary: "What reimplementing init, add, commit and checkout taught me about the data model under Git.",
+      tags: ["java", "git", "systems"],
+      draft: true,
+      body: [
+        "Git is mostly a key-value store with a version-control interface bolted on top. I knew that sentence before I started uGit. I understood it about a week in.",
+        "## Everything is an object",
+        "Every file, directory and commit is stored the same way: serialise it, hash it with SHA-1, deflate it with zlib, and write it under its hash. The hash is the address, so the same content is only ever stored once.",
+        "- A blob is a file's contents, and nothing else — not even its name.",
+        "- A tree is a directory: names, modes and the hashes of what they point to.",
+        "- A commit is a tree, its parents, an author and a message.",
+        "## Commits are snapshots, not diffs",
+        "Each commit points at a complete tree. Unchanged files cost nothing, because their hashes, and so their objects, are the ones already on disk. History is a DAG of immutable objects, and a branch is a file containing one hash.",
+        "    $ ugit commit -m \"first\"",
+        "    [main 3f2a9c1] first",
+        "## The index never reads your files",
+        "`ugit status` compares hashes, not contents. The staging index records the hash of every tracked file, so working out what changed is a comparison against HEAD's tree rather than a read of every file.",
+        "No dependencies, plain Java. The code is on GitHub.",
+      ],
+    },
+  ] as Post[],
+
+  // `til` — one or two sentences each, newest first.
+  til: [
+    {
+      date: "2026-09-12",
+      tag: "temporal",
+      draft: true,
+      text: "A Temporal workflow is replayed from its event history every time it resumes, so workflow code has to be deterministic. Clocks, randomness and network calls belong in activities.",
+    },
+    {
+      date: "2026-07-03",
+      tag: "react-native",
+      draft: true,
+      text: "Coming back from the Settings app doesn't re-run anything on Android. Re-check permissions when AppState turns 'active', or the screen keeps showing the old answer.",
+    },
+    {
+      date: "2026-05-02",
+      tag: "git",
+      draft: true,
+      text: "Git stores snapshots, not diffs. Packfiles delta-compress objects later, but that is storage — the model is a full tree per commit.",
+    },
+  ] as Til[],
+
+  // `now`, after nownownow.com: what has your attention this month.
+  now: {
+    updated: "2026-11-01",
+    draft: true,
+    items: [
+      ["Working on", "The communications service and Blood Intel at Loop Health."],
+      ["Learning", "German and Japanese, slowly."],
+      ["Shooting", "Waiting on a clear, moonless sky."],
+    ],
+  } as Now,
+
+  // `gallery`. Put the files in public/gallery/ and list them here, e.g.
+  //   { src: "/gallery/milky-way.jpg", alt: "The Milky Way over a ridge",
+  //     caption: "Milky Way core", place: "Spiti Valley", date: "2025-05" },
+  // Export at around 2400px on the long side; the site resizes them.
+  gallery: [] as Photo[],
+
+  // `hire`. status is "open", "selective" (the right role only) or "closed".
+  hire: {
+    status: "open",
+    draft: true,
+    headline: "Open to backend and ML engineering roles.",
+    roles: ["Backend and platform engineering", "Distributed systems", "Applied ML engineering"],
+    locations: ["Bengaluru", "Remote"],
+    start: "Happy to talk timelines",
+    pitch: [
+      "I build the services other teams lean on: event pipelines, workflow engines, the messaging layer behind 200K+ notifications a month.",
+      "I'm happiest with a problem that has too many moving parts and someone who needs it to just work.",
+    ],
+  } as Hire,
 
   // Shown by `neofetch`
   facts: {

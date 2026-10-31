@@ -1,8 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
-import { config } from "@/lib/config";
+import { config, published } from "@/lib/config";
+import { HIRE_STATUS } from "@/lib/commands";
 import { index, search, highlight } from "@/lib/search";
 import SideCharts from "./SideCharts";
+import { NowPlaying, useListening } from "./Widgets";
 import type { Stats } from "@/app/api/stats/route";
 
 /** Counts per section, for the idle contents list. */
@@ -43,6 +45,8 @@ export default function Sidebar({
   const [q, setQ] = useState("");
   const hits = useMemo(() => search(q), [q]);
   const searching = q.trim().length > 0;
+  const listening = useListening();
+  const hire = published(config.hire) && config.hire.status !== "closed";
 
   return (
     <aside className="sidebar" aria-label="search and contents">
@@ -94,6 +98,13 @@ export default function Sidebar({
         </div>
       ) : (
         <div className="side-idle">
+          {hire && (
+            <button className="side-hire" onClick={() => onRun("hire")}>
+              <span className="accent">{HIRE_STATUS[config.hire.status]}</span>
+              <span className="dim">{config.hire.headline}</span>
+            </button>
+          )}
+
           <p className="side-label dim">contents</p>
           <ul className="side-toc">
             {SECTIONS.map(([name, n]) => (
@@ -117,6 +128,13 @@ export default function Sidebar({
           </dl>
 
           <SideCharts stats={stats} />
+
+          {listening?.configured && listening.track && (
+            <>
+              <p className="side-label dim">listening</p>
+              <NowPlaying data={listening} compact />
+            </>
+          )}
 
           <p className="side-label dim">elsewhere</p>
           <ul className="side-links">

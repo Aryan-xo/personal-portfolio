@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { config } from "@/lib/config";
 import { themes, defaultTheme } from "@/lib/themes";
-import { runCommand, completions, linkable, type Line } from "@/lib/commands";
+import { runCommand, completions, linkable, available, type CmdResult, type Line } from "@/lib/commands";
 import { setWrap } from "@/lib/render";
 import * as audio from "@/lib/audio";
 import { tours } from "@/lib/tours";
@@ -13,6 +13,7 @@ import Sidebar from "./Sidebar";
 import Screensaver from "./Screensaver";
 import Resizer from "./Resizer";
 import ThemePicker from "./ThemePicker";
+import Widget from "./Widgets";
 import type { Stats } from "@/app/api/stats/route";
 
 /**
@@ -24,11 +25,14 @@ type Block = { id: number; prompt?: string; cmd?: string; lines?: Line[] };
 
 const QUICK = [
   "about",
+  "hire",
   "experience",
   "timeline",
   "gh",
   "research",
   "projects",
+  "writing",
+  "gallery",
   "finance",
   "skills",
   "achievements",
@@ -37,8 +41,27 @@ const QUICK = [
   "certifications",
   "interests",
   "contact",
+  "guestbook",
   "resume",
-];
+].filter(available);
+
+/**
+ * Every organisation with a logo, once each, in the order the experience lists
+ * them. Clicking one opens that entry, so the row doubles as a contents list
+ * for anyone who would rather not type.
+ */
+const LOGOS = (() => {
+  const seen = new Set<string>();
+  const out: { src: string; name: string; cmd: string }[] = [];
+  const add = (src: string, name: string, cmd: string) => {
+    if (!src || seen.has(src)) return;
+    seen.add(src);
+    out.push({ src, name, cmd });
+  };
+  config.experience.forEach((e, i) => add(e.logo, e.company, `show experience:${i}`));
+  config.research.forEach((r, i) => add(r.logo, r.lab, `show research:${i}`));
+  return out;
+})();
 
 export default function Terminal() {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -264,7 +287,7 @@ export default function Terminal() {
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     follow(true);
     if (e.key === "Enter") audio.enterKey();
-    else if (e.key.length === 1 || e.key === "Backspace") audio.key();
+    else if (e.key?.length === 1 || e.key === "Backspace") audio.key();
 
     // `/` on an empty prompt jumps to the sidebar search, the way it does in
     // less and vim.
@@ -323,11 +346,11 @@ export default function Terminal() {
 
   // Re-wrap every block when the column count changes. Rendering a command is
   // pure — the side effects ran when it was submitted — so this is safe.
-  const rendered = useMemo(() => {
+  const rendered = useMemo<Pick<CmdResult, "lines" | "widget">[]>(() => {
     // Set the column count before anything is formatted with it.
     setWrap(cols);
     return blocks.map((b) =>
-      b.cmd !== undefined ? runCommand(b.cmd, { history, stats }).lines : b.lines!
+      b.cmd !== undefined ? runCommand(b.cmd, { history, stats }) : { lines: b.lines! }
     );
   }, [blocks, cols, history, stats]);
 
@@ -414,7 +437,8 @@ export default function Terminal() {
   // ⌘K / Ctrl+K reaches the search from anywhere.
   useEffect(() => {
     const onHotkey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
+      // Autofill dispatches keydown with no `key` at all.
+      if (e.key?.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
       const box = document.getElementById("side-search") as HTMLInputElement | null;
       if (!box) return;
       e.preventDefault();
@@ -440,6 +464,21 @@ export default function Terminal() {
             <p className="accent">{config.identity.headline}</p>
             <p className="accent">{config.identity.location}</p>
             <p className="dim">{config.identity.tagline}</p>
+            <ul className="highlights" aria-label="highlights">
+              {config.highlights.map(([value, label]) => (
+                <li key={label}>
+                  <span className="accent">{value}</span> <span className="dim">{label}</span>
+                </li>
+              ))}
+            </ul>
+            <nav className="logos" aria-label="where I've worked">
+              {LOGOS.map((l) => (
+                <button key={l.src} onClick={() => submit(l.cmd)} title={l.name} aria-label={l.name}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={l.src} alt="" width={22} height={22} />
+                </button>
+              ))}
+            </nav>
             <p className="hint">
               Type <span className="accent">help</span> and press Enter.
             </p>
@@ -464,7 +503,7 @@ export default function Terminal() {
             )}
             {/* Only the newest block streams; earlier ones have already settled. */}
             <StreamedLines
-              lines={rendered[i]}
+              lines={rendered[i].lines}
               stream={i === blocks.length - 1}
               // Soft while streaming, so scrolling up mid-flow isn't fought;
               // forced on completion, so finished output always lands at the
@@ -475,6 +514,7 @@ export default function Terminal() {
                 settled.current += 1;
               }}
             />
+            {rendered[i].widget && <Widget kind={rendered[i].widget} />}
           </div>
         ))}
         <div ref={endRef} />

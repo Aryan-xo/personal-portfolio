@@ -61,6 +61,15 @@ export default function StreamedLines({
     let i = 0;
     let timer: ReturnType<typeof setTimeout>;
 
+    // Once the block has landed there is nothing left to skip. Left armed, every
+    // later click "skipped" it again, and finishing a block scrolls to the
+    // bottom — so the page jumped there on every click.
+    const disarm = () => {
+      clearTimeout(arm);
+      window.removeEventListener("keydown", skip);
+      window.removeEventListener("pointerdown", skip);
+    };
+
     const step = () => {
       // Emit a small burst per tick; a real stream does not arrive one word at
       // a time on a metronome. Faster blocks take bigger bites, which also
@@ -70,6 +79,7 @@ export default function StreamedLines({
       setShown(i);
       onProgress?.();
       if (i >= chunks.length) {
+        disarm();
         onDone?.();
         return;
       }
@@ -80,12 +90,13 @@ export default function StreamedLines({
     };
     timer = setTimeout(step, 30);
 
-    const skip = () => {
+    function skip() {
+      disarm();
       clearTimeout(timer);
       i = chunks.length;
       setShown(i);
       onDone?.();
-    };
+    }
 
     // Register on the next macrotask. The keystroke that submitted the command
     // is still bubbling when this effect runs, and would otherwise skip the
@@ -97,9 +108,7 @@ export default function StreamedLines({
 
     return () => {
       clearTimeout(timer);
-      clearTimeout(arm);
-      window.removeEventListener("keydown", skip);
-      window.removeEventListener("pointerdown", skip);
+      disarm();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chunks, stream, rate]);
@@ -117,6 +126,11 @@ export default function StreamedLines({
     <>
       {lines.slice(0, lastLine + 1).map((l, i) => (
         <div key={i} className={l.cls ?? ""}>
+          {l.logo && (
+            // A favicon-sized mark; the optimiser would only make it bigger.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="line-logo" src={l.logo} alt="" />
+          )}
           {visible.current[i] || " "}
           {!done && i === lastLine && <span className="stream-caret" />}
         </div>

@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { config, published } from "./config";
 import {
   type Line,
   renderAbout,
@@ -9,9 +9,11 @@ import {
   renderFinance,
   renderInterest,
   renderLeadership,
+  renderPost,
   renderProject,
   renderResearch,
   renderSkillGroup,
+  renderTil,
 } from "./render";
 
 export type Entry = {
@@ -153,6 +155,30 @@ export const index: Entry[] = (() => {
       meta: `${list.length} items`,
       body: list.join(" "),
       lines: renderSkillGroup([group, list]),
+    });
+  }
+
+  for (const p of c.writing.filter(published)) {
+    out.push({
+      section: "writing",
+      command: "writing",
+      id: id("writing"),
+      title: p.title,
+      meta: `${p.date} · ${p.tags.join(" · ")}`,
+      body: [p.summary, ...p.body].join(" "),
+      lines: renderPost(p),
+    });
+  }
+
+  for (const t of c.til.filter(published)) {
+    out.push({
+      section: "til",
+      command: "til",
+      id: id("til"),
+      title: t.text.split(/(?<=\.)\s/)[0],
+      meta: `${t.date} · #${t.tag}`,
+      body: t.text,
+      lines: renderTil(t),
     });
   }
 

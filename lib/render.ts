@@ -1,6 +1,6 @@
-import { config } from "./config";
+import { config, type Post, type Til } from "./config";
 
-export type Line = { text: string; cls?: string };
+export type Line = { text: string; cls?: string; logo?: string };
 
 export const A = (text: string): Line => ({ text, cls: "accent" });
 export const D = (text: string): Line => ({ text, cls: "dim" });
@@ -50,6 +50,10 @@ export function wrap(text: string, indent = 2, hang = indent): Line[] {
 const wrapAs = (cls: Line["cls"], text: string, indent = 0, hang = indent): Line[] =>
   wrap(text, indent, hang).map((l) => ({ ...l, cls }));
 
+/** Puts a logo beside the first line of an entry, when it has one. */
+const withLogo = (logo: string, [first, ...rest]: Line[]): Line[] =>
+  logo ? [{ ...first, logo }, ...rest] : [first, ...rest];
+
 // ─────────────────────────────────────────────────────────────
 // One renderer per kind of entry. The section commands map over these, and
 // `show` uses a single one, so a result opened from search reads exactly as it
@@ -65,7 +69,7 @@ type Achievement = (typeof config.achievements)[number];
 type Education = (typeof config.education)[number];
 
 export const renderExperience = (e: Experience): Line[] => [
-  ...wrapAs("accent", `${e.role} @ ${e.company}`, 0, 2),
+  ...withLogo(e.logo, wrapAs("accent", `${e.role} @ ${e.company}`, 0, 2)),
   ...wrapAs("dim", `${e.period} · ${e.location}`, 0, 2),
   ...(e.note ? wrapAs("dim", e.note, 2) : []),
   ...e.bullets.flatMap((b) => wrap(`• ${b}`, 2, 4)),
@@ -73,7 +77,7 @@ export const renderExperience = (e: Experience): Line[] => [
 ];
 
 export const renderResearch = (r: Research): Line[] => [
-  ...wrapAs("accent", r.lab, 0, 2),
+  ...withLogo(r.logo, wrapAs("accent", r.lab, 0, 2)),
   ...wrap(`${r.role} · ${r.advisor}`, 2, 4),
   D(`  ${r.period}`),
   ...wrapAs("dim", r.note, 2),
@@ -110,7 +114,7 @@ export const renderAchievement = (a: Achievement): Line[] =>
   wrap(`${a.year}  ·  ${a.text}`, 2, 10);
 
 export const renderEducation = (e: Education): Line[] => [
-  ...wrapAs("accent", e.school, 0, 2),
+  ...withLogo(e.logo, wrapAs("accent", e.school, 0, 2)),
   ...wrap(e.degree, 2, 4),
   ...wrapAs("dim", `${e.period} · ${e.detail}`, 2, 4),
   ...e.extra.flatMap((x) => wrap(`· ${x}`, 2, 4)),
@@ -129,4 +133,31 @@ export const renderAbout = (): Line[] => [
   ...config.identity.summary.flatMap((s) => (s ? wrap(s, 2) : [P()])),
   P(),
   D(`  ${config.identity.tagline}`),
+];
+
+const draftMark = (x: { draft?: boolean }) => (x.draft ? "  (draft)" : "");
+
+export const renderPostSummary = (p: Post): Line[] => [
+  ...wrapAs("accent", `${p.title}${draftMark(p)}`, 0, 2),
+  ...wrapAs("dim", `${p.date}  ·  ${p.tags.join(" · ")}`, 2, 4),
+  ...wrap(p.summary, 2),
+  D(`  read ${p.slug}`),
+];
+
+export const renderPost = (p: Post): Line[] => [
+  ...wrapAs("accent", `${p.title}${draftMark(p)}`, 0, 2),
+  ...wrapAs("dim", `${p.date}  ·  ${p.tags.join(" · ")}`, 0, 2),
+  // Headings and paragraphs open with a blank line, except a paragraph that
+  // follows its heading; bullets and code run on from whatever introduced them.
+  ...p.body.flatMap((b, i): Line[] => {
+    if (b.startsWith("## ")) return [P(), ...wrapAs("accent", b.slice(3), 0, 2)];
+    if (b.startsWith("    ")) return [D(`  ${b}`)];
+    if (b.startsWith("- ")) return wrap(`• ${b.slice(2)}`, 2, 4);
+    return [...(p.body[i - 1]?.startsWith("## ") ? [] : [P()]), ...wrap(b, 0)];
+  }),
+];
+
+export const renderTil = (t: Til): Line[] => [
+  ...wrapAs("dim", `${t.date}  #${t.tag}${draftMark(t)}`, 2, 4),
+  ...wrap(t.text, 4),
 ];
